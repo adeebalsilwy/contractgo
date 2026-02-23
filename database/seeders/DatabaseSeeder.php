@@ -39,5 +39,8 @@ class DatabaseSeeder extends Seeder
         
         // Call the Yemeni professional seeder
         $this->call(YemeniProfessionalSeeder::class);
+        
+        // Call the Super Admin seeder
+        $this->call(SuperAdminSeeder::class);
     }
 }

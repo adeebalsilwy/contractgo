@@ -773,6 +773,42 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'store'])->name('contract-amendments.store');
                 Route::post('/contract-amendments/{id}/sign', [ContractAmendmentsController::class, 'sign'])->name('contract-amendments.sign');
             });
+            
+            // Contract Quantities routes
+            Route::middleware(['customcan:manage_contracts'])->group(function () {
+                Route::resource('/contract-quantities', ContractQuantitiesController::class);
+                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.create');
+                Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.edit');
+                Route::put('/contract-quantities/{id}', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.update');
+                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.show');
+                Route::get('/contract-quantities/contract/{contractId}/upload', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
+                Route::post('/contract-quantities/contract/{contractId}/bulk-upload', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
+                Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
+                Route::post('/contract-quantities/{id}/reject', [ContractQuantitiesController::class, 'rejectQuantity'])->name('contract-quantities.reject');
+                Route::put('/contract-quantities/{id}/modify', [ContractQuantitiesController::class, 'modifyQuantity'])->name('contract-quantities.modify');
+                Route::get('/contract-quantities/pending-approval', [ContractQuantitiesController::class, 'pendingForApproval'])->name('contract-quantities.pending-approval');
+            });
+            
+            // Contract Approvals routes
+            Route::middleware(['customcan:manage_contracts'])->group(function () {
+                Route::get('/contract-approvals', [ContractApprovalsController::class, 'index'])->name('contract-approvals.index');
+                Route::get('/contract-approvals/{contractId}/{stage}', [ContractApprovalsController::class, 'show'])->name('contract-approvals.show');
+                Route::post('/contract-approvals/{contractId}/{stage}/approve', [ContractApprovalsController::class, 'approve'])->name('contract-approvals.approve');
+                Route::post('/contract-approvals/{contractId}/{stage}/reject', [ContractApprovalsController::class, 'reject'])->name('contract-approvals.reject');
+                Route::get('/contract-approvals/contract/{contractId}/history', [ContractApprovalsController::class, 'history'])->name('contract-approvals.history');
+                Route::get('/contract-approvals/pending', [ContractApprovalsController::class, 'pendingApprovals'])->name('contract-approvals.pending');
+            });
+            
+            // Journal Entries routes
+            Route::middleware(['customcan:manage_contracts'])->group(function () {
+                Route::resource('/journal-entries', JournalEntriesController::class);
+                Route::get('/journal-entries/{id}/show', [JournalEntriesController::class, 'show'])->name('journal-entries.show');
+                Route::get('/journal-entries/{id}/edit', [JournalEntriesController::class, 'edit'])->name('journal-entries.edit');
+                Route::put('/journal-entries/{id}', [JournalEntriesController::class, 'update'])->name('journal-entries.update');
+                Route::post('/journal-entries/{id}/post', [JournalEntriesController::class, 'postToAccounting'])->name('journal-entries.post');
+                Route::post('/journal-entries/sync-onyx-pro', [JournalEntriesController::class, 'syncWithOnyxPro'])->name('journal-entries.sync-onyx-pro');
+                Route::post('/journal-entries/generate-from-contract/{contractId}', [JournalEntriesController::class, 'generateFromContract'])->name('journal-entries.generate-from-contract');
+            });
             Route::middleware(['customcan:manage_contract_types'])->group(function () {
                 Route::get('/contracts/contract-types', [ContractsController::class, 'contract_types']);
                 Route::post('/contracts/store-contract-type', [ContractsController::class, 'store_contract_type'])->middleware(['customcan:create_contract_types', 'log.activity']);

@@ -3495,34 +3495,6 @@ if (!function_exists('getMenus')) {
                         'class' => 'menu-item' . (Request::is('contracts/contract-types') ? ' active' : ''),
                         'show' => $user->can('manage_contract_types') ? 1 : 0
                     ],
-                    [
-                        'id' => 'contract_quantities',
-                        'label' => get_label('contract_quantities', 'Contract Quantities'),
-                        'url' => url('contract-quantities'),
-                        'class' => 'menu-item' . (Request::is('contract-quantities') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_approvals',
-                        'label' => get_label('contract_approvals', 'Contract Approvals'),
-                        'url' => url('contract-approvals'),
-                        'class' => 'menu-item' . (Request::is('contract-approvals') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_amendments',
-                        'label' => get_label('contract_amendments', 'Contract Amendments'),
-                        'url' => url('contract-amendments'),
-                        'class' => 'menu-item' . (Request::is('contract-amendments') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'journal_entries',
-                        'label' => get_label('journal_entries', 'Journal Entries'),
-                        'url' => url('journal-entries'),
-                        'class' => 'menu-item' . (Request::is('journal-entries') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
                 ],
             ],
             [
@@ -3623,13 +3595,6 @@ if (!function_exists('getMenus')) {
                         'url' => url('items'),
                         'class' => 'menu-item' . (Request::is('items') ? ' active' : ''),
                         'show' => $user->can('manage_items') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'invoices',
-                        'label' => get_label('invoices', 'Invoices'),
-                        'url' => url('estimates-invoices'),
-                        'class' => 'menu-item' . (Request::is('estimates-invoices') || Request::is('estimates-invoices/*') ? ' active' : ''),
-                        'show' => $user->can('manage_estimates_invoices') ? 1 : 0
                     ],
                 ],
             ],
