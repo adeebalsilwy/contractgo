@@ -233,6 +233,12 @@ class TasksController extends Controller
                 unset($formFields['user_id']);
                 $clientCanDiscuss = isAdminOrHasAllDataAccess() && $request->filled('clientCanDiscuss') && $request->input('clientCanDiscuss') == 'on' ? 1 : 0;
                 $formFields['client_can_discuss'] = $clientCanDiscuss;
+                
+                // Handle item pricing if provided
+                if ($request->has('item_pricing_id')) {
+                    $formFields['item_pricing_id'] = $request->input('item_pricing_id');
+                }
+                
                 $new_task = Task::create($formFields);
                 $task_id = $new_task->id;
                 $task = Task::find($task_id);
@@ -581,6 +587,12 @@ class TasksController extends Controller
                 'completion_percentage' => $request->input('completion_percentage', 0),
                 'task_list_id' => $request->input('task_list_id'),
             ];
+            
+            // Handle item pricing if provided
+            if ($request->has('item_pricing_id')) {
+                $formFieldsToUpdate['item_pricing_id'] = $request->input('item_pricing_id');
+            }
+            
             // Handle start_date
             if ($request->filled('start_date')) {
                 $formFieldsToUpdate['start_date'] = format_date($request->input('start_date'), false, $isApi ? 'Y-m-d' : app('php_date_format'), 'Y-m-d');

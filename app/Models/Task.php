@@ -171,4 +171,10 @@ class Task extends Model implements HasMedia
         $customFieldValue = $this->customFieldValues()->where('custom_field_id', $fieldId)->first();
         return $customFieldValue ? $customFieldValue->value : null;
     }
+
+    // Relationship with ItemPricing
+    public function itemPricing()
+    {
+        return $this->belongsTo(ItemPricing::class);
+    }
 }

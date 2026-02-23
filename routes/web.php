@@ -754,8 +754,14 @@ Route::middleware(['CheckInstallation'])->group(function () {
             });
             Route::middleware(['customcan:manage_contracts'])->group(function () {
                 Route::get('/contracts', [ContractsController::class, 'index'])->name('contracts.index');
+                Route::get('/contracts/dashboard', [ContractsController::class, 'dashboard'])->name('contracts.dashboard')->middleware(['customcan:manage_contracts']);
+                Route::post('/contracts/{id}/start-workflow', [ContractsController::class, 'startWorkflow'])->name('contracts.start-workflow')->middleware(['customcan:manage_contracts']);
+                Route::post('/contracts/{id}/advance-workflow/{stage}', [ContractsController::class, 'advanceWorkflow'])->name('contracts.advance-workflow')->middleware(['customcan:manage_contracts']);
+                Route::get('/contracts/create', [ContractsController::class, 'create'])->name('contracts.create')->middleware(['customcan:create_contracts']);
+                Route::get('/contracts/{id}/edit', [ContractsController::class, 'edit'])->name('contracts.edit')->middleware(['customcan:edit_contracts', 'checkAccess:App\Models\Contract,contracts,id']);
                 Route::post('/contracts/store', [ContractsController::class, 'store'])->middleware(['customcan:create_contracts', 'log.activity']);
                 Route::get('/contracts/list', [ContractsController::class, 'list']);
+                Route::get('/contracts/{id}', [ContractsController::class, 'show'])->name('contracts.show')->middleware(['checkAccess:App\Models\Contract,contracts,id']);
                 Route::get('/contracts/get/{id}', [ContractsController::class, 'get'])->middleware(['checkAccess:App\Models\Contract,contracts,id']);
                 Route::post('/contracts/update', [ContractsController::class, 'update'])->middleware(['customcan:edit_contracts', 'log.activity']);
                 Route::get('/contracts/sign/{id}', [ContractsController::class, 'sign'])->middleware(['checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
@@ -923,6 +929,11 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/items/update', [ItemsController::class, 'update'])->middleware(['customcan:edit_items', 'log.activity']);
                 Route::delete('/items/destroy/{id}', [ItemsController::class, 'destroy'])->middleware(['customcan:delete_items', 'demo_restriction', 'log.activity']);
                 Route::post('/items/destroy_multiple', [ItemsController::class, 'destroy_multiple'])->middleware(['customcan:delete_items', 'demo_restriction', 'log.activity']);
+            });
+
+            Route::middleware(['customcan:manage_items'])->group(function () {
+                Route::resource('/item-pricing', ItemPricingController::class);
+                Route::get('/item-pricing-by-item-unit', [ItemPricingController::class, 'getPrice'])->name('item-pricing.get-price');
             });
 
             Route::middleware(['customcan:manage_payment_methods'])->group(function () {

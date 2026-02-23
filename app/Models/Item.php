@@ -30,4 +30,10 @@ class Item extends Model
     {
         return $this->belongsTo(Tax::class);
     }
+
+    // Relationship with ItemPricing
+    public function itemPricings()
+    {
+        return $this->hasMany(ItemPricing::class);
+    }
 }

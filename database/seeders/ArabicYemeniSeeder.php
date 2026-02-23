@@ -267,6 +267,175 @@ class ArabicYemeniSeeder extends Seeder
             'status' => 'pending',
         ]);
 
+        // Create sample items for invoicing
+        $item1 = \App\Models\Item::create([
+            'workspace_id' => 1,
+            'unit_id' => 1, // Assuming a default unit exists
+            'title' => 'ردميات ترابية',
+            'price' => 50.00,
+            'description' => 'ردميات ترابية حسب المواصفات الفنية',
+        ]);
+
+        $item2 = \App\Models\Item::create([
+            'workspace_id' => 1,
+            'unit_id' => 1, // Assuming a default unit exists
+            'title' => 'خرسانة خفيفة',
+            'price' => 120.00,
+            'description' => 'خرسانة خفيفة لصب الأعمدة',
+        ]);
+
+        $item3 = \App\Models\Item::create([
+            'workspace_id' => 1,
+            'unit_id' => 1, // Assuming a default unit exists
+            'title' => 'حديد تسليح',
+            'price' => 25000.00,
+            'description' => 'حديد تسليح عيار 12 مم',
+        ]);
+
+        // Create sample units if they don't exist
+        $unit = \App\Models\Unit::firstOrCreate([
+            'title' => 'متر مكعب',
+        ], [
+            'workspace_id' => 1,
+            'title' => 'متر مكعب',
+            'description' => 'وحدة قياس الحجوم',
+        ]);
+
+        // Create sample invoice linked to the contract
+        $invoice = \App\Models\EstimatesInvoice::create([
+            'workspace_id' => 1,
+            'client_id' => $contractor->id,
+            'name' => 'محمد أحمد محمد',
+            'address' => 'شارع العروبة، صنعاء',
+            'city' => 'صنعاء',
+            'state' => 'صنعاء',
+            'country' => 'اليمن',
+            'phone' => '+967771234567',
+            'type' => 'invoice', // 'invoice' or 'estimate'
+            'status' => 'paid',
+            'from_date' => now()->subDays(30),
+            'to_date' => now(),
+            'total' => 735000.00,
+            'tax_amount' => 0.00,
+            'final_total' => 735000.00,
+            'created_by' => $admin->id,
+            'note' => 'فاتورة مستخلص لمشروع توسعة طريق صنعاء - تعز',
+            'personal_note' => 'تم الدفع وفقاً لجدول المستخلصات',
+        ]);
+
+        // Attach items to the invoice
+        $invoice->items()->attach($item1->id, [
+            'qty' => 1000,
+            'unit_id' => $unit->id,
+            'rate' => 50.00,
+            'amount' => 50000.00,
+        ]);
+
+        $invoice->items()->attach($item2->id, [
+            'qty' => 500,
+            'unit_id' => $unit->id,
+            'rate' => 120.00,
+            'amount' => 60000.00,
+        ]);
+
+        $invoice->items()->attach($item3->id, [
+            'qty' => 25,
+            'unit_id' => $unit->id,
+            'rate' => 25000.00,
+            'amount' => 625000.00,
+        ]);
+
+        // Create a payment for the invoice
+        $payment = \App\Models\Payment::create([
+            'workspace_id' => 1,
+            'user_id' => $admin->id,
+            'client_id' => $contractor->id,
+            'invoice_id' => $invoice->id,
+            'amount' => 735000.00,
+            'payment_method_id' => 1, // Using the first payment method
+            'payment_date' => now(),
+            'note' => 'دفع مستخلص المشروع',
+            'transaction_id' => 'TXN' . time(),
+        ]);
+
+        // Connect the invoice to the contract by updating the contract with invoice reference
+        $contract->update([
+            'invoice_reference' => $invoice->id, // Store invoice ID as reference
+            'financial_status' => 'invoiced',
+        ]);
+
+        // Create additional invoices for other contracts
+        $invoice2 = \App\Models\EstimatesInvoice::create([
+            'workspace_id' => 1,
+            'client_id' => $contractor->id,
+            'name' => 'أحمد محمد عبدالله',
+            'address' => 'شارع الجمهورية، حضرموت',
+            'city' => 'المكلا',
+            'state' => 'حضرموت',
+            'country' => 'اليمن',
+            'phone' => '+967771234568',
+            'type' => 'invoice',
+            'status' => 'pending',
+            'from_date' => now()->subDays(10),
+            'to_date' => now()->addDays(20),
+            'total' => 1250000.00,
+            'tax_amount' => 0.00,
+            'final_total' => 1250000.00,
+            'created_by' => $admin->id,
+            'note' => 'فاتورة مستخلص لمشروع صيانة جسور محافظة حضرموت',
+            'personal_note' => 'في انتظار الدفع',
+        ]);
+
+        // Connect second contract to its invoice
+        $contract2->update([
+            'invoice_reference' => $invoice2->id,
+            'financial_status' => 'invoiced',
+        ]);
+
+        // Create a third invoice for the archived contract
+        $invoice3 = \App\Models\EstimatesInvoice::create([
+            'workspace_id' => 1,
+            'client_id' => $contractor->id,
+            'name' => 'علي حسن علي',
+            'address' => 'شارع 26 سبتمبر، عدن',
+            'city' => 'عدن',
+            'state' => 'عدن',
+            'country' => 'اليمن',
+            'phone' => '+967771234569',
+            'type' => 'invoice',
+            'status' => 'paid',
+            'from_date' => now()->subDays(400),
+            'to_date' => now()->subDays(365),
+            'total' => 875000.00,
+            'tax_amount' => 0.00,
+            'final_total' => 875000.00,
+            'created_by' => $admin->id,
+            'note' => 'فاتورة مستخلص لمشروع صيانة شبكة الكهرباء - عدن',
+            'personal_note' => 'تم الاستلام والدفع',
+        ]);
+
+        // Connect archived contract to its invoice
+        $archivedContract->update([
+            'invoice_reference' => $invoice3->id,
+            'financial_status' => 'completed',
+        ]);
+
+        // Create a journal entry for the first invoice to integrate with accounting system
+        $journalEntry2 = JournalEntry::create([
+            'contract_id' => $contract->id,
+            'entry_number' => 'JE-2026-002',
+            'entry_type' => 'invoice_payment',
+            'account_code' => 'ACC-002',
+            'account_name' => 'النقدية',
+            'reference_number' => $payment->transaction_id,
+            'credit_amount' => 0.00,
+            'debit_amount' => 735000.00,
+            'description' => 'قيد استلام دفعة من مستخلص مشروع توسعة طريق صنعاء - تعز',
+            'entry_date' => now(),
+            'status' => 'posted',
+            'created_by' => $admin->id,
+        ]);
+
         // Output success message
         $this->command->info('Seeder بيانات العربية اليمنية تم تنفيذه بنجاح!');
     }

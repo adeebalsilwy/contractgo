@@ -65,6 +65,24 @@ $visibleColumns = getUserPreferences('contracts');
                         <option value="partially_signed"><?= get_label('partially_signed', 'Partially signed') ?></option>
                     </select>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <select class="form-select js-example-basic-multiple" id="workflow_status_filter" aria-label="Default select example" data-placeholder="<?= get_label('select_workflow_status', 'Select workflow status') ?>" data-allow-clear="true" multiple>
+                        <option value="draft"><?= get_label('draft', 'Draft') ?></option>
+                        <option value="quantity_approval"><?= get_label('quantity_approval', 'Quantity Approval') ?></option>
+                        <option value="management_review"><?= get_label('management_review', 'Management Review') ?></option>
+                        <option value="accounting_processing"><?= get_label('accounting_review', 'Accounting Review') ?></option>
+                        <option value="final_approval"><?= get_label('final_approval', 'Final Approval') ?></option>
+                        <option value="approved"><?= get_label('approved', 'Approved') ?></option>
+                        <option value="amendment_pending"><?= get_label('amendment_pending', 'Amendment Pending') ?></option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <select class="form-select" id="archived_filter" aria-label="Default select example" data-placeholder="<?= get_label('select_archived_status', 'Select archived status') ?>" data-allow-clear="true">
+                        <option value=""><?= get_label('all', 'All') ?></option>
+                        <option value="active"><?= get_label('active', 'Active') ?></option>
+                        <option value="archived"><?= get_label('archived', 'Archived') ?></option>
+                    </select>
+                </div>
             </div>
             <input type="hidden" id="contract_date_between_from">
             <input type="hidden" id="contract_date_between_to">
@@ -72,6 +90,8 @@ $visibleColumns = getUserPreferences('contracts');
             <input type="hidden" name="start_date_to" id="contract_start_date_to">
             <input type="hidden" name="end_date_from" id="contract_end_date_from">
             <input type="hidden" name="end_date_to" id="contract_end_date_to">
+            <input type="hidden" name="workflow_status" id="workflow_status">
+            <input type="hidden" name="is_archived" id="is_archived">
             <div class="table-responsive text-nowrap">
                 <input type="hidden" id="data_type" value="contracts">
                 <input type="hidden" id="data_table" value="contracts_table">
@@ -93,6 +113,14 @@ $visibleColumns = getUserPreferences('contracts');
                             <th data-field="promisor_sign" data-visible="{{ (in_array('promisor_sign', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('promisor_sign_status', 'Promisor sign status') ?></th>
                             <th data-field="promisee_sign" data-visible="{{ (in_array('promisee_sign', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('promisee_sign_status', 'Promisee sign status') ?></th>
                             <th data-field="status" data-visible="{{ (in_array('status', $visibleColumns) || empty($visibleColumns)) ? 'true' : 'false' }}"><?= get_label('status', 'Status') ?></th>
+                            <th data-field="workflow_status" data-visible="{{ (in_array('workflow_status', $visibleColumns) || empty($visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('workflow_status', 'Workflow Status') ?></th>
+                            <th data-field="site_supervisor" data-visible="{{ (in_array('site_supervisor', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="false"><?= get_label('site_supervisor', 'Site Supervisor') ?></th>
+                            <th data-field="quantity_approver" data-visible="{{ (in_array('quantity_approver', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="false"><?= get_label('quantity_approver', 'Quantity Approver') ?></th>
+                            <th data-field="accountant" data-visible="{{ (in_array('accountant', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="false"><?= get_label('accountant', 'Accountant') ?></th>
+                            <th data-field="quantities_count" data-visible="{{ (in_array('quantities_count', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('quantities_count', 'Quantities') ?></th>
+                            <th data-field="approvals_count" data-visible="{{ (in_array('approvals_count', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('approvals_count', 'Approvals') ?></th>
+                            <th data-field="amendments_count" data-visible="{{ (in_array('amendments_count', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('amendments_count', 'Amendments') ?></th>
+                            <th data-field="journal_entries_count" data-visible="{{ (in_array('journal_entries_count', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('journal_entries_count', 'Journal Entries') ?></th>
                             <th data-field="description" data-visible="{{ (in_array('description', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('description', 'Description') ?></th>
                             <th data-field="created_by" data-visible="{{ (in_array('created_by', $visibleColumns) || empty($visibleColumns)) ? 'true' : 'false' }}" data-sortable="false"><?= get_label('created_by', 'Created by') ?></th>
                             <th data-field="created_at" data-visible="{{ (in_array('created_at', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true"><?= get_label('created_at', 'Created at') ?></th>

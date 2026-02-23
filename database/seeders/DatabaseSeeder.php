@@ -42,5 +42,11 @@ class DatabaseSeeder extends Seeder
         
         // Call the Super Admin seeder
         $this->call(SuperAdminSeeder::class);
+        
+        // Call the Units seeder
+        $this->call(UnitsSeeder::class);
+        
+        // Call the Payment Methods seeder
+        $this->call(PaymentMethodsSeeder::class);
     }
 }

@@ -3625,6 +3625,13 @@ if (!function_exists('getMenus')) {
                         'show' => $user->can('manage_items') ? 1 : 0
                     ],
                     [
+                        'id' => 'item_pricing',
+                        'label' => get_label('item_pricing', 'Item Pricing'),
+                        'url' => url('item-pricing'),
+                        'class' => 'menu-item' . (Request::is('item-pricing') ? ' active' : ''),
+                        'show' => $user->can('manage_items') ? 1 : 0
+                    ],
+                    [
                         'id' => 'invoices',
                         'label' => get_label('invoices', 'Invoices'),
                         'url' => url('estimates-invoices'),

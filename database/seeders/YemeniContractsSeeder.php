@@ -181,6 +181,10 @@ class YemeniContractsSeeder extends Seeder
                 'is_archived' => isset($contractData['is_archived']) ? $contractData['is_archived'] : false,
                 'archived_at' => isset($contractData['archived_at']) ? $contractData['archived_at'] : null,
                 'archived_by' => isset($contractData['is_archived']) && $contractData['is_archived'] ? $users->random()->id : null,
+                
+                // Financial integration - for demo purposes we'll set some to have invoices
+                'financial_status' => $index % 3 == 0 ? 'invoiced' : ($index % 3 == 1 ? 'completed' : 'pending'),
+                'invoice_reference' => $index % 4 == 0 ? rand(1, 5) : null,
             ]);
         }
     }

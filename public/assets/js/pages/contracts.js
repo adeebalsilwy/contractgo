@@ -3,6 +3,8 @@
 function queryParams(p) {
     return {
         "statuses": $('#status_filter').val(),
+        "workflow_statuses": $('#workflow_status_filter').val(),
+        "is_archived": $('#archived_filter').val(),
         "client_ids": $('#client_filter').val(),
         "project_ids": $('#project_filter').val(),
         "type_ids": $('#type_filter').val(),
@@ -191,7 +193,7 @@ $(document).ready(function () {
     });
 });
 
-addDebouncedEventListener('#status_filter, #client_filter, #project_filter, #type_filter', 'change', function (e, refreshTable) {
+addDebouncedEventListener('#status_filter, #workflow_status_filter, #archived_filter, #client_filter, #project_filter, #type_filter', 'change', function (e, refreshTable) {
     e.preventDefault();
     if (typeof refreshTable === 'undefined' || refreshTable) {
         $('#contracts_table').bootstrapTable('refresh');
@@ -209,6 +211,8 @@ $(document).on('click', '.clear-contracts-filters', function (e) {
     $('#contract_end_date_from').val('');
     $('#contract_end_date_to').val('');
     $('#status_filter').val('').trigger('change', [0]);
+    $('#workflow_status_filter').val('').trigger('change', [0]);
+    $('#archived_filter').val('').trigger('change', [0]);
     $('#client_filter').val('').trigger('change', [0]);
     $('#project_filter').val('').trigger('change', [0]);
     $('#type_filter').val('').trigger('change', [0]);

@@ -55,7 +55,10 @@ class Contract extends Model
         'final_approval_signature',
         'final_approval_signed_at',
         // Audit trail
-        'workflow_notes'
+        'workflow_notes',
+        // Financial integration
+        'financial_status',
+        'invoice_reference'
     ];
 
     public function workspace()
@@ -150,5 +153,17 @@ class Contract extends Model
     public function amendments()
     {
         return $this->hasMany(ContractAmendment::class);
+    }
+    
+    // Relationship for created by user
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    
+    // Relationship for invoice
+    public function invoice()
+    {
+        return $this->belongsTo(EstimatesInvoice::class, 'invoice_reference');
     }
 }

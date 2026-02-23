@@ -36,6 +36,76 @@ class ContractsController extends Controller
         return view('contracts.list', ['contracts' => $contracts]);
     }
 
+    public function create()
+    {
+        $clients = Client::where('workspace_id', $this->workspace->id)->get();
+        $projects = $this->workspace->projects()->get();
+        $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
+        $users = User::where('workspace_id', $this->workspace->id)->get();
+        
+        return view('contracts.create', compact('clients', 'projects', 'contractTypes', 'users'));
+    }
+
+    public function edit($id)
+    {
+        $contract = Contract::findOrFail($id);
+        $clients = Client::where('workspace_id', $this->workspace->id)->get();
+        $projects = $this->workspace->projects()->get();
+        $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
+        $users = User::where('workspace_id', $this->workspace->id)->get();
+        
+        return view('contracts.edit', compact('contract', 'clients', 'projects', 'contractTypes', 'users'));
+    }
+
+    public function dashboard()
+    {
+        // Get contract statistics
+        $contracts = isAdminOrHasAllDataAccess() ? $this->workspace->contracts() : $this->user->contracts();
+        
+        $stats = [
+            'total_contracts' => $contracts->count(),
+            'approved_contracts' => $contracts->where('workflow_status', 'approved')->count(),
+            'pending_contracts' => $contracts->where('workflow_status', '!=', 'approved')->where('is_archived', false)->count(),
+            'archived_contracts' => $contracts->where('is_archived', true)->count(),
+            'pending_quantities' => ContractQuantity::where('status', 'pending')->count(),
+            'pending_approvals' => ContractApproval::where('status', 'pending')->count(),
+            'pending_amendments' => ContractAmendment::where('status', 'pending')->count(),
+            'total_quantities' => ContractQuantity::count(),
+            'total_approvals' => ContractApproval::count(),
+            'total_amendments' => ContractAmendment::count(),
+            'total_journal_entries' => JournalEntry::count(),
+        ];
+        
+        // Get workflow status distribution
+        $workflowStats = $contracts->select('workflow_status')
+            ->selectRaw('count(*) as count')
+            ->groupBy('workflow_status')
+            ->pluck('count', 'workflow_status')
+            ->toArray();
+        
+        // Get recent activity
+        $recentActivity = collect([
+            // Add recent contract activities
+            $contracts->latest()->limit(5)->get()->map(function($contract) {
+                return [
+                    'title' => 'Contract Created: ' . $contract->title,
+                    'description' => 'New contract created with value ' . format_currency($contract->value),
+                    'icon' => 'file',
+                    'created_at' => $contract->created_at
+                ];
+            })
+        ])->flatten(1)->sortByDesc('created_at')->take(10);
+        
+        // Get upcoming contracts (starting in next 30 days)
+        $upcomingContracts = $contracts->where('start_date', '>=', now())
+            ->where('start_date', '<=', now()->addDays(30))
+            ->with(['client'])
+            ->orderBy('start_date')
+            ->get();
+        
+        return view('contracts.dashboard', compact('stats', 'workflowStats', 'recentActivity', 'upcomingContracts'));
+    }
+
 
     /**
      * Create a new contract.
@@ -360,18 +430,29 @@ class ContractsController extends Controller
         $end_date_from = (request('end_date_from')) ? request('end_date_from') : "";
         $end_date_to = (request('end_date_to')) ? request('end_date_to') : "";
         $is_archived = request('is_archived', null); // Added for archived filter
+        $workflow_statuses = request('workflow_statuses', []); // Added for workflow status filter
         $where = ['contracts.workspace_id' => $this->workspace->id];
 
         $contracts = Contract::select(
             'contracts.*',
             DB::raw('CONCAT(clients.first_name, " ", clients.last_name) AS client_name'),
             'contract_types.type as contract_type',
-            'projects.title as project_title'
+            'projects.title as project_title',
+            DB::raw('CONCAT(site_supervisor.first_name, " ", site_supervisor.last_name) AS site_supervisor_name'),
+            DB::raw('CONCAT(quantity_approver.first_name, " ", quantity_approver.last_name) AS quantity_approver_name'),
+            DB::raw('CONCAT(accountant.first_name, " ", accountant.last_name) AS accountant_name'),
+            DB::raw('(SELECT COUNT(*) FROM contract_quantities WHERE contract_quantities.contract_id = contracts.id) AS quantities_count'),
+            DB::raw('(SELECT COUNT(*) FROM contract_approvals WHERE contract_approvals.contract_id = contracts.id) AS approvals_count'),
+            DB::raw('(SELECT COUNT(*) FROM contract_amendments WHERE contract_amendments.contract_id = contracts.id) AS amendments_count'),
+            DB::raw('(SELECT COUNT(*) FROM journal_entries WHERE journal_entries.contract_id = contracts.id) AS journal_entries_count')
         )
             ->leftJoin('users', 'contracts.created_by', '=', 'users.id')
             ->leftJoin('clients', 'contracts.client_id', '=', 'clients.id')
             ->leftJoin('contract_types', 'contracts.contract_type_id', '=', 'contract_types.id')
-            ->leftJoin('projects', 'contracts.project_id', '=', 'projects.id');
+            ->leftJoin('projects', 'contracts.project_id', '=', 'projects.id')
+            ->leftJoin('users as site_supervisor', 'contracts.site_supervisor_id', '=', 'site_supervisor.id')
+            ->leftJoin('users as quantity_approver', 'contracts.quantity_approver_id', '=', 'quantity_approver.id')
+            ->leftJoin('users as accountant', 'contracts.accountant_id', '=', 'accountant.id');
 
 
         if (!isAdminOrHasAllDataAccess()) {
@@ -384,6 +465,10 @@ class ContractsController extends Controller
         // Filter for archived/unarchived if specified
         if ($is_archived !== null) {
             $contracts = $contracts->where('contracts.is_archived', $is_archived);
+        }
+                    
+        if (!empty($workflow_statuses)) {
+            $contracts = $contracts->whereIn('contracts.workflow_status', $workflow_statuses);
         }
 
         if (!empty($project_ids)) {
@@ -510,6 +595,13 @@ class ContractsController extends Controller
                     'promisee_sign' => $promisee_sign_status,
                     'status' => $statusBadge,
                     'workflow_status' => $contract->is_archived ? '<span class="badge bg-secondary">Archived</span>' : '<span class="badge bg-' . ($contract->workflow_status === 'approved' ? 'success' : 'primary') . '">' . ucfirst(str_replace('_', ' ', $contract->workflow_status)) . '</span>',
+                    'site_supervisor' => $contract->site_supervisor_name ?? '-',
+                    'quantity_approver' => $contract->quantity_approver_name ?? '-',
+                    'accountant' => $contract->accountant_name ?? '-',
+                    'quantities_count' => $contract->quantities_count ?? 0,
+                    'approvals_count' => $contract->approvals_count ?? 0,
+                    'amendments_count' => $contract->amendments_count ?? 0,
+                    'journal_entries_count' => $contract->journal_entries_count ?? 0,
                     'created_by' => strpos($contract->created_by, 'u_') === 0 ? formatUserHtml(User::find(substr($contract->created_by, 2))) : formatClientHtml(Client::find(substr($contract->created_by, 2))),
                     'created_at' => format_date($contract->created_at, true),
                     'updated_at' => format_date($contract->updated_at, true),
@@ -806,6 +898,32 @@ class ContractsController extends Controller
      * }
      */
 
+    public function show($id)
+    {
+        $contract = Contract::with([
+            'client', 
+            'project', 
+            'contract_type', 
+            'siteSupervisor', 
+            'quantityApprover', 
+            'accountant', 
+            'reviewer', 
+            'finalApprover',
+            'createdBy',
+            'archivedBy'
+        ])->findOrFail($id);
+        
+        // Load related module counts
+        $contract->loadCount([
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries as journal_entries_count'
+        ]);
+        
+        return view('contracts.show', compact('contract'));
+    }
+
     public function get($id)
     {
         try {
@@ -922,6 +1040,129 @@ class ContractsController extends Controller
         
         $contracts = $contracts->count();
         return view('contracts.archived', ['contracts' => $contracts]);
+    }
+
+    /**
+     * Start workflow for a contract
+     */
+    public function startWorkflow($id)
+    {
+        try {
+            $contract = Contract::findOrFail($id);
+            
+            // Check if user can start workflow
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contract->created_by) {
+                abort(403, 'Unauthorized to start workflow for this contract');
+            }
+            
+            // Validate that required workflow assignments are made
+            if (!$contract->site_supervisor_id || !$contract->quantity_approver_id || !$contract->accountant_id) {
+                return response()->json(['error' => true, 'message' => 'Please assign all required workflow roles before starting the workflow.']);
+            }
+            
+            // Update workflow status to start quantity approval
+            $contract->update([
+                'workflow_status' => 'quantity_approval',
+                'workflow_notes' => ($contract->workflow_notes ?? '') . "\nWorkflow started on " . now() . " by " . $this->user->first_name . " " . $this->user->last_name
+            ]);
+            
+            return response()->json(['error' => false, 'message' => 'Workflow started successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Advance workflow to next stage
+     */
+    public function advanceWorkflow($id, $stage)
+    {
+        try {
+            $contract = Contract::findOrFail($id);
+            
+            // Check if user is authorized for this stage
+            $requiredApprover = $this->getRequiredApproverForStage($stage, $contract);
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $requiredApprover) {
+                abort(403, 'Unauthorized to advance workflow at this stage');
+            }
+            
+            // Validate that current stage is complete
+            if (!$this->isStageComplete($stage, $contract)) {
+                return response()->json(['error' => true, 'message' => 'Current stage is not complete. Please complete all required actions.']);
+            }
+            
+            // Get next workflow stage
+            $nextStage = $this->getNextWorkflowStage($stage);
+            
+            $contract->update([
+                'workflow_status' => $nextStage,
+                'workflow_notes' => ($contract->workflow_notes ?? '') . "\nAdvanced from " . $stage . " to " . $nextStage . " on " . now() . " by " . $this->user->first_name . " " . $this->user->last_name
+            ]);
+            
+            return response()->json(['error' => false, 'message' => 'Workflow advanced successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Get required approver for a workflow stage
+     */
+    private function getRequiredApproverForStage($stage, $contract)
+    {
+        switch ($stage) {
+            case 'quantity_approval':
+                return $contract->quantity_approver_id;
+            case 'management_review':
+                return $contract->reviewer_id ?? $contract->final_approver_id;
+            case 'accounting_processing':
+                return $contract->accountant_id;
+            case 'final_approval':
+                return $contract->final_approver_id;
+            default:
+                return null;
+        }
+    }
+    
+    /**
+     * Check if a workflow stage is complete
+     */
+    private function isStageComplete($stage, $contract)
+    {
+        switch ($stage) {
+            case 'quantity_approval':
+                // Check if all quantities are approved
+                return !ContractQuantity::where('contract_id', $contract->id)
+                    ->where('status', 'pending')
+                    ->exists();
+            case 'management_review':
+                // Check if management review is complete
+                return ContractApproval::where('contract_id', $contract->id)
+                    ->where('approval_stage', 'management_review')
+                    ->where('status', 'approved')
+                    ->exists();
+            case 'accounting_processing':
+                // Check if accounting entries are created
+                return JournalEntry::where('contract_id', $contract->id)->exists();
+            default:
+                return true;
+        }
+    }
+    
+    /**
+     * Get next workflow stage
+     */
+    private function getNextWorkflowStage($currentStage)
+    {
+        $stages = [
+            'draft' => 'quantity_approval',
+            'quantity_approval' => 'management_review',
+            'management_review' => 'accounting_processing',
+            'accounting_processing' => 'final_approval',
+            'final_approval' => 'approved'
+        ];
+        
+        return $stages[$currentStage] ?? 'approved';
     }
 
     /**
@@ -1196,6 +1437,24 @@ class ContractsController extends Controller
             }
         }
         return response()->json(['error' => false, 'message' => 'Contract(s) deleted successfully.', 'id' => $deletedContracts, 'titles' => $deletedContractTitles]);
+    }
+
+    private function getWorkflowStatusBadge($status)
+    {
+        $badgeClasses = [
+            'draft' => 'secondary',
+            'quantity_approval' => 'warning',
+            'management_review' => 'info',
+            'accounting_processing' => 'primary',
+            'final_approval' => 'dark',
+            'approved' => 'success',
+            'amendment_pending' => 'danger'
+        ];
+        
+        $class = $badgeClasses[$status] ?? 'secondary';
+        $label = get_label($status, ucfirst(str_replace('_', ' ', $status)));
+        
+        return '<span class="badge bg-' . $class . '">' . $label . '</span>';
     }
 
     public function contract_types(Request $request)

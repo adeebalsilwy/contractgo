@@ -3031,6 +3031,18 @@
                             @enderror
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label class="form-label" for="item_pricing_id">{{ get_label('item_pricing', 'Item Pricing') }}</label>
+                            <select class="form-select select2" name="item_pricing_id" id="item_pricing_id"
+                                data-placeholder="{{ get_label('select_item_pricing', 'Select Item Pricing') }}">
+                                <option value="">{{ get_label('select_item_pricing', 'Select Item Pricing') }}</option>
+                                @foreach(App\Models\ItemPricing::with(['item', 'unit'])->get() as $itemPricing)
+                                    <option value="{{ $itemPricing->id }}">
+                                        {{ $itemPricing->item->title ?? 'N/A' }} - {{ $itemPricing->unit->title ?? 'N/A' }} ({{ number_format($itemPricing->price, 2) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label class="form-label"
                                 for="completion_percentage">{{ get_label('completion_percentage', 'Completion Percentage (%)') }}</label>
                             <select class="form-select" name="completion_percentage" id="completion_percentage">
@@ -3440,6 +3452,18 @@
                             @error('billing_type')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="edit_item_pricing_id">{{ get_label('item_pricing', 'Item Pricing') }}</label>
+                            <select class="form-select select2" name="item_pricing_id" id="edit_item_pricing_id"
+                                data-placeholder="{{ get_label('select_item_pricing', 'Select Item Pricing') }}">
+                                <option value="">{{ get_label('select_item_pricing', 'Select Item Pricing') }}</option>
+                                @foreach(App\Models\ItemPricing::with(['item', 'unit'])->get() as $itemPricing)
+                                    <option value="{{ $itemPricing->id }}">
+                                        {{ $itemPricing->item->title ?? 'N/A' }} - {{ $itemPricing->unit->title ?? 'N/A' }} ({{ number_format($itemPricing->price, 2) }})
+                                    </option>
+                                @endforeach>
+                            </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label"
