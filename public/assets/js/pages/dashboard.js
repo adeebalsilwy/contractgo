@@ -198,6 +198,115 @@ loadDashboardOrder();
         todoOptions
     );
     todoChart.render();
+
+    // Extract Statistics Chart
+    if (document.querySelector("#extractStatisticsChart")) {
+        // Get extract data from dataset or hidden inputs
+        const totalEstimates = parseFloat(document.querySelector("[data-total-estimates]")?.dataset?.totalEstimates || 0);
+        const totalInvoices = parseFloat(document.querySelector("[data-total-invoices]")?.dataset?.totalInvoices || 0);
+        const paidInvoices = parseFloat(document.querySelector("[data-paid-invoices]")?.dataset?.paidInvoices || 0);
+        const unpaidInvoices = parseFloat(document.querySelector("[data-unpaid-invoices]")?.dataset?.unpaidInvoices || 0);
+        
+        // Prepare data for chart
+        const extractData = [totalEstimates, totalInvoices, paidInvoices, unpaidInvoices];
+        const extractLabels = ["Estimates", "Invoices", "Paid", "Unpaid"];
+        const extractColors = ["#3498db", "#2ecc71", "#1abc9c", "#e74c3c"];
+        
+        // Filter out zero values
+        const filteredData = [];
+        const filteredLabels = [];
+        const filteredColors = [];
+        
+        extractData.forEach((value, index) => {
+            if (value > 0) {
+                filteredData.push(value);
+                filteredLabels.push(extractLabels[index]);
+                filteredColors.push(extractColors[index]);
+            }
+        });
+        
+        if (filteredData.length > 0) {
+            var extractOptions = {
+                series: filteredData,
+                colors: filteredColors,
+                labels: filteredLabels,
+                chart: {
+                    type: "donut",
+                    height: 250,
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: "70%",
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: "Total",
+                                    fontSize: "14px",
+                                    fontWeight: 500,
+                                    formatter: function () {
+                                        return filteredData.reduce((a, b) => a + b, 0);
+                                    },
+                                },
+                                value: {
+                                    show: true,
+                                    fontSize: "16px",
+                                    fontWeight: 600,
+                                    formatter: function (val) {
+                                        return val;
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                dataLabels: {
+                    enabled: false,
+                },
+                legend: {
+                    position: "bottom",
+                    fontSize: "12px",
+                    markers: {
+                        radius: 8,
+                    },
+                },
+                tooltip: {
+                    y: {
+                        formatter: function (val) {
+                            return val;
+                        },
+                    },
+                },
+                responsive: [
+                    {
+                        breakpoint: 480,
+                        options: {
+                            chart: {
+                                height: 200,
+                            },
+                            legend: {
+                                position: "bottom",
+                            },
+                        },
+                    },
+                ],
+            };
+            
+            var extractChart = new ApexCharts(
+                document.querySelector("#extractStatisticsChart"),
+                extractOptions
+            );
+            extractChart.render();
+        }
+    }
+
+    // Income vs Expense Chart
+    if (document.querySelector("#income-expense-chart")) {
+        // This will be handled by the existing income vs expense functionality
+        // which is already implemented later in the file
+    }
+
 })();
 window.icons = {
     refresh: "bx-refresh",

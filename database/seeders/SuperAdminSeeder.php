@@ -24,7 +24,7 @@ class SuperAdminSeeder extends Seeder
                 'last_name' => 'Alsilwy',
                 'email' => 'adeebalsilwy19@gmail.com',
                 'password' => Hash::make('12345678'),
-                'status' => 1, // Active
+                'active_status' => 1, // Active
                 'email_verified_at' => now(),
             ]);
 

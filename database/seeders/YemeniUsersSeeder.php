@@ -127,7 +127,21 @@ class YemeniUsersSeeder extends Seeder
             ],
         ];
 
+        // Check if any workspace exists, if not, create one first
+        $workspaceCount = \App\Models\Workspace::count();
+        if ($workspaceCount === 0) {
+            // Create a default workspace
+            $defaultWorkspace = \App\Models\Workspace::create([
+                'user_id' => '1', // Using default user_id
+                'title' => 'ال workspace الافتراضي',
+            ]);
+        } else {
+            $defaultWorkspace = \App\Models\Workspace::first();
+        }
+
         foreach ($users as $userData) {
+            // Set default workspace ID after ensuring workspace exists
+            $userData['default_workspace_id'] = $defaultWorkspace->id;
             User::create($userData);
         }
     }

@@ -266,17 +266,20 @@ class MeetingsController extends Controller
             $meetings = $meetings->where(function ($query) use ($statuses) {
                 if (in_array('ongoing', $statuses)) {
                     $query->orWhere(function ($q) {
-                        $q->where('start_date_time', '<=', Carbon::now(config('app.timezone')))
-                            ->where('end_date_time', '>=', Carbon::now(config('app.timezone')));
+                        $timezone = config('app.timezone') ?: 'UTC';
+                        $q->where('start_date_time', '<=', Carbon::now($timezone))
+                            ->where('end_date_time', '>=', Carbon::now($timezone));
                     });
                 }
 
                 if (in_array('yet_to_start', $statuses)) {
-                    $query->orWhere('start_date_time', '>', Carbon::now(config('app.timezone')));
+                    $timezone = config('app.timezone') ?: 'UTC';
+                    $query->orWhere('start_date_time', '>', Carbon::now($timezone));
                 }
 
                 if (in_array('ended', $statuses)) {
-                    $query->orWhere('end_date_time', '<', Carbon::now(config('app.timezone')));
+                    $timezone = config('app.timezone') ?: 'UTC';
+                    $query->orWhere('end_date_time', '<', Carbon::now($timezone));
                 }
             });
         }
@@ -286,20 +289,24 @@ class MeetingsController extends Controller
         $canEdit = checkPermission('edit_meetings');
         $canDelete = checkPermission('delete_meetings');
 
-        $currentDateTime = Carbon::now(config('app.timezone'));
+        $timezone = config('app.timezone') ?: 'UTC';
+        $currentDateTime = Carbon::now($timezone);
         $meetings = $meetings->orderBy($sort, $order)
             ->paginate(request("limit"))
             ->through(function ($meeting) use ($canEdit, $canDelete, $canCreate, $currentDateTime) {
 
-            $currentDateTime = Carbon::now(config('app.timezone'));
-            $meetingStartTime = \Carbon\Carbon::parse($meeting->start_date_time, config('app.timezone'));
+            $timezone = config('app.timezone') ?: 'UTC';
+            $currentDateTime = Carbon::now($timezone);
+            $meetingStartTime = \Carbon\Carbon::parse($meeting->start_date_time, $timezone);
 
             // Correct approach: Convert stored UTC times to local timezone for comparison
-            $currentDateTime = Carbon::now(config('app.timezone')); // Current time in your timezone
+            $timezone = config('app.timezone') ?: 'UTC';
+            $currentDateTime = Carbon::now($timezone); // Current time in your timezone
 
             // Parse stored UTC times and convert to your timezone
-            $meetingStart = Carbon::parse($meeting->start_date_time, config('app.timezone'));
-            $meetingEnd = Carbon::parse($meeting->end_date_time, config('app.timezone'));
+            $timezone = config('app.timezone') ?: 'UTC';
+            $meetingStart = Carbon::parse($meeting->start_date_time, $timezone);
+            $meetingEnd = Carbon::parse($meeting->end_date_time, $timezone);
 
             if ($currentDateTime < $meetingStart) {
                 $diff = $currentDateTime->diff($meetingStart);
@@ -545,12 +552,15 @@ class MeetingsController extends Controller
             }
             if ($status) {
                 if ($status === 'ongoing') {
-                    $meetingsQuery->where('start_date_time', '<=', Carbon::now(config('app.timezone')))
-                        ->where('end_date_time', '>=', Carbon::now(config('app.timezone')));
+                    $timezone = config('app.timezone') ?: 'UTC';
+                    $meetingsQuery->where('start_date_time', '<=', Carbon::now($timezone))
+                        ->where('end_date_time', '>=', Carbon::now($timezone));
                 } elseif ($status === 'yet_to_start') {
-                    $meetingsQuery->where('start_date_time', '>', Carbon::now(config('app.timezone')));
+                    $timezone = config('app.timezone') ?: 'UTC';
+                    $meetingsQuery->where('start_date_time', '>', Carbon::now($timezone));
                 } elseif ($status === 'ended') {
-                    $meetingsQuery->where('end_date_time', '<', Carbon::now(config('app.timezone')));
+                    $timezone = config('app.timezone') ?: 'UTC';
+                    $meetingsQuery->where('end_date_time', '<', Carbon::now($timezone));
                 }
             }
             $meetingsQuery->when($search, function ($query) use ($search) {
@@ -872,7 +882,8 @@ class MeetingsController extends Controller
     public function join(Request $request, $id)
     {
         $meeting = Meeting::findOrFail($id);
-        $currentDateTime = Carbon::now(config('app.timezone'));
+        $timezone = config('app.timezone') ?: 'UTC';
+        $currentDateTime = Carbon::now($timezone);
         if ($currentDateTime < $meeting->start_date_time) {
             return redirect('/meetings')->with('error', 'Meeting is yet to start');
         } elseif ($currentDateTime > $meeting->end_date_time) {
@@ -907,7 +918,8 @@ class MeetingsController extends Controller
             return redirect('/');
         }
         $meeting = Meeting::findOrFail($id);
-        $currentDateTime = Carbon::now(config('app.timezone'));
+        $timezone = config('app.timezone') ?: 'UTC';
+        $currentDateTime = Carbon::now($timezone);
         if ($currentDateTime < $meeting->start_date_time) {
             return redirect('/meetings')->with('error', 'Meeting is yet to start');
         } elseif ($currentDateTime > $meeting->end_date_time) {
@@ -952,12 +964,18 @@ class MeetingsController extends Controller
     {
         // Parse date range with proper timezone handling
         $start = $request->query('start')
-            ? Carbon::parse($request->query('start'), config('app.timezone'))
-            : Carbon::now(config('app.timezone'))->startOfMonth();
+            ? Carbon::parse($request->query('start'), config('app.timezone') ?: 'UTC')
+            : (function() {
+                $timezone = config('app.timezone') ?: 'UTC';
+                return Carbon::now($timezone)->startOfMonth();
+              })();
 
         $end = $request->query('end')
-            ? Carbon::parse($request->query('end'), config('app.timezone'))
-            : Carbon::now(config('app.timezone'))->endOfMonth();
+            ? Carbon::parse($request->query('end'), config('app.timezone') ?: 'UTC')
+            : (function() {
+                $timezone = config('app.timezone') ?: 'UTC';
+                return Carbon::now($timezone)->endOfMonth();
+              })();
 
 
         // Retrieve meetings based on user access
@@ -975,12 +993,14 @@ class MeetingsController extends Controller
 
 
         // Current time for status calculations
-        $currentDateTime = Carbon::now(config('app.timezone'));
+        $timezone = config('app.timezone') ?: 'UTC';
+        $currentDateTime = Carbon::now($timezone);
 
         // Format meetings for FullCalendar
         $events = $meetings->map(function ($meeting) use ($currentDateTime) {
-            $startTime = Carbon::parse($meeting->start_date_time, config('app.timezone'));
-            $endTime = Carbon::parse($meeting->end_date_time, config('app.timezone'));
+            $timezone = config('app.timezone') ?: 'UTC';
+            $startTime = Carbon::parse($meeting->start_date_time, $timezone);
+            $endTime = Carbon::parse($meeting->end_date_time, $timezone);
 
             // Determine meeting status and styling
             if ($currentDateTime < $startTime) {

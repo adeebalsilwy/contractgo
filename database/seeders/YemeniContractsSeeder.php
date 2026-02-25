@@ -159,7 +159,7 @@ class YemeniContractsSeeder extends Seeder
                 'client_id' => $clients->random()->id,
                 'project_id' => $projects->random()->id,
                 'workspace_id' => 1,
-                'created_by' => $users->random()->id,
+
                 'contract_type_id' => $contractTypes->random()->id,
                 'description' => $contractData['description'],
                 
@@ -184,7 +184,7 @@ class YemeniContractsSeeder extends Seeder
                 
                 // Financial integration - for demo purposes we'll set some to have invoices
                 'financial_status' => $index % 3 == 0 ? 'invoiced' : ($index % 3 == 1 ? 'completed' : 'pending'),
-                'invoice_reference' => $index % 4 == 0 ? rand(1, 5) : null,
+                'invoice_reference' => null, // Temporarily set to null to avoid FK constraint issues
             ]);
         }
     }

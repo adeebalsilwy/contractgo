@@ -261,17 +261,18 @@
                                                 class="form-label"><?= get_label('status', 'Status') ?></label>
                                             <div class="d-flex align-items-center">
                                                 <select
-                                                    class="form-select form-select-sm select-bg-label-{{ $project->status->color }}"
+                                                    class="form-select form-select-sm select-bg-label-{{ $project->status ? $project->status->color : 'secondary' }}"
                                                     id="statusSelect" data-id="{{ $project->id }}"
-                                                    data-original-status-id="{{ $project->status->id }}"
-                                                    data-original-color-class="select-bg-label-{{ $project->status->color }}">
+                                                    data-original-status-id="{{ $project->status ? $project->status->id : '' }}"
+                                                    data-original-color-class="select-bg-label-{{ $project->status ? $project->status->color : 'secondary' }}">
+                                                    <option value="" class="badge bg-label-secondary">-</option>
                                                     @foreach ($statuses as $status)
                                                         @php
                                                             $disabled = canSetStatus($status) ? '' : 'disabled';
                                                         @endphp
                                                         <option value="{{ $status->id }}"
                                                             class="badge bg-label-{{ $status->color }}"
-                                                            {{ $project->status->id == $status->id ? 'selected' : '' }}
+                                                            {{ $project->status && $project->status->id == $status->id ? 'selected' : '' }}
                                                             {{ $disabled }}>
                                                             {{ $status->title }}
                                                         </option>

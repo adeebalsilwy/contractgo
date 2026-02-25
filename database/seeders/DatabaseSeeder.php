@@ -2,18 +2,15 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents ;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
-     *
-     * @return void
      */
-    public function run()
+    public function run(): void
     {
         // \App\Models\User::factory(10)->create();
 
@@ -21,32 +18,32 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',
         // ]);
-        $modules = ['payments', 'taxes', 'units', 'items'];
-        $actions = ['create', 'manage', 'edit', 'delete'];
 
-        // Permission::create(['name' => 'all_data_access', 'guard_name' => 'client']);
-
-        foreach ($modules as $module) {
-            foreach ($actions as $action) {
-                $permissionName = "{$action}_{$module}";
-                Permission::create(['name' => $permissionName, 'guard_name' => 'web']);
-            }
-        }
-
-        // Assign permissions to a role
-        // $adminRole = Role::findByName('admin');
-        // $adminRole->syncPermissions(Permission::all());
-        
-        // Call the Yemeni professional seeder
-        $this->call(YemeniProfessionalSeeder::class);
-        
-        // Call the Super Admin seeder
-        $this->call(SuperAdminSeeder::class);
-        
-        // Call the Units seeder
-        $this->call(UnitsSeeder::class);
-        
-        // Call the Payment Methods seeder
-        $this->call(PaymentMethodsSeeder::class);
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            // Yemeni seeders first to establish relationships
+            YemeniUsersSeeder::class,
+            YemeniClientsSeeder::class,
+            YemeniProjectsSeeder::class,
+            // Now other seeders that might depend on basic data
+            SuperAdminSeeder::class,
+            StatusSeeder::class,
+            PrioritySeeder::class,
+            TagSeeder::class,
+            UnitsSeeder::class,
+            PaymentMethodsSeeder::class,
+            YemeniContractTypesSeeder::class,
+            YemeniContractsSeeder::class,
+            YemeniContractQuantitiesSeeder::class,
+            YemeniContractApprovalsSeeder::class,
+            YemeniContractAmendmentsSeeder::class,
+            YemeniJournalEntriesSeeder::class,
+            // Add our new seeders
+            ItemPricingSeeder::class,
+            ContractQuantitySeeder::class,
+            ComprehensiveItemPricingSeeder::class,
+            // Comprehensive Yemeni seeder
+            YemeniComprehensiveSeeder::class,
+        ]);
     }
 }

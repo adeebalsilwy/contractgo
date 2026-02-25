@@ -11,21 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('custom_fieldables', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('custom_field_id');
-            $table->unsignedBigInteger('custom_fieldable_id');
-            $table->string('custom_fieldable_type');
-            $table->text('value')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('custom_fieldables')) {
+            Schema::create('custom_fieldables', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('custom_field_id');
+                $table->unsignedBigInteger('custom_fieldable_id');
+                $table->string('custom_fieldable_type');
+                $table->text('value')->nullable();
+                $table->timestamps();
 
-            $table->foreign('custom_field_id')
-                ->references('id')
-                ->on('custom_fields')
-                ->onDelete('cascade');
-
-            $table->index(['custom_fieldable_id', 'custom_fieldable_type']);
-        });
+                // Add shorter index name to avoid identifier name too long error
+                $table->index(['custom_fieldable_id', 'custom_fieldable_type'], 'cfbl_fieldable_id_type_index');
+            });
+            
+            // Add foreign key after table creation to avoid constraint issues
+            if (Schema::hasTable('custom_fields')) {
+                Schema::table('custom_fieldables', function (Blueprint $table) {
+                    $table->foreign('custom_field_id')
+                        ->references('id')
+                        ->on('custom_fields')
+                        ->onDelete('cascade');
+                });
+            }
+        }
     }
 
     /**

@@ -11,16 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('comment_attachments', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('comment_id');
-            $table->string('file_name');
-            $table->string('file_path');
-            $table->string('file_type'); // e.g., pdf, excel, image, etc.
-            $table->timestamps();
-
-            $table->foreign('comment_id')->references('id')->on('comments')->onDelete('cascade');
-        });
+        if (!Schema::hasTable('comment_attachments')) {
+            Schema::create('comment_attachments', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('comment_id');
+                $table->string('file_name');
+                $table->string('file_path');
+                $table->string('file_type'); // e.g., pdf, excel, image, etc.
+                $table->timestamps();
+            });
+            
+            // Add foreign key after table creation to avoid constraint issues
+            if (Schema::hasTable('comments')) {
+                Schema::table('comment_attachments', function (Blueprint $table) {
+                    $table->foreign('comment_id')->references('id')->on('comments')->onDelete('cascade');
+                });
+            }
+        }
     }
 
     /**

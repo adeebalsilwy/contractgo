@@ -17,22 +17,18 @@ class PaymentMethodsSeeder extends Seeder
             [
                 'workspace_id' => 1,
                 'title' => 'نقداً',
-                'description' => 'الدفع نقداً',
             ],
             [
                 'workspace_id' => 1,
                 'title' => 'شيك مصرفي',
-                'description' => 'الدفع عن طريق الشيكات البنكية',
             ],
             [
                 'workspace_id' => 1,
                 'title' => 'تحويل بنكي',
-                'description' => 'الدفع عن طريق التحويلات البنكية',
             ],
             [
                 'workspace_id' => 1,
                 'title' => 'بطاقة ائتمان',
-                'description' => 'الدفع عن طريق البطاقات الائتمانية',
             ],
         ];
 

@@ -8,37 +8,54 @@ use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 $user = getAuthenticatedUser();
-if (isAdminOrHasAllDataAccess()) {
-    $workspaces = Workspace::all()->take(5);
-    $total_workspaces = Workspace::count();
-} else {
-    $workspaces = $user->workspaces;
-    $total_workspaces = count($workspaces);
-    $workspaces = $user->workspaces->skip(0)->take(5);
-}
-$current_workspace_id = getWorkspaceId();
-$current_workspace = Workspace::find($current_workspace_id);
-// Check if the current workspace is in the list of workspaces retrieved
-$workspace_ids = $workspaces->pluck('id')->toArray();
-if (!in_array($current_workspace_id, $workspace_ids)) {
-    // If not, prepend the current workspace to the list
-    $current_workspace = Workspace::find($current_workspace_id);
-    $workspaces->prepend($current_workspace);
-    // If there are more than 5 workspaces, remove the last one
-    if ($workspaces->count() > 5) {
-        $workspaces->pop();
+
+// Initialize variables to avoid undefined variable errors if user is null
+$workspaces = collect();
+$total_workspaces = 0;
+$current_workspace_id = 0;
+$current_workspace = null;
+$current_workspace_title = 'No workspace(s) found';
+$unread = 0;
+$pending_todos_count = 0;
+$ongoing_meetings_count = 0;
+$pendingLeaveRequestsCount = 0;
+
+if ($user) {
+    if (isAdminOrHasAllDataAccess()) {
+        $workspaces = Workspace::all()->take(5);
+        $total_workspaces = Workspace::count();
+    } else {
+        $workspaces = $user->workspaces;
+        $total_workspaces = count($workspaces);
+        $workspaces = $user->workspaces->skip(0)->take(5);
     }
+    // Filter out any null workspaces
+    $workspaces = $workspaces->filter(function ($workspace) {
+        return $workspace !== null;
+    });
+    $current_workspace_id = getWorkspaceId();
+    $current_workspace = $current_workspace_id ? Workspace::find($current_workspace_id) : null;
+    // Check if the current workspace is in the list of workspaces retrieved
+    $workspace_ids = $workspaces->pluck('id')->toArray();
+    if ($current_workspace && !in_array($current_workspace_id, $workspace_ids)) {
+        // If not, prepend the current workspace to the list
+        $workspaces->prepend($current_workspace);
+        // If there are more than 5 workspaces, remove the last one
+        if ($workspaces->count() > 5) {
+            $workspaces->pop();
+        }
+    }
+    $current_workspace_title = $current_workspace ? $current_workspace->title : 'No workspace(s) found';
+    $messenger = new ChatifyMessenger();
+    $unread = $messenger->totalUnseenMessages();
+    $pending_todos_count = $user->todos(0)->count();
+    $ongoing_meetings_count = $user->meetings('ongoing')->count();
+    $query = LeaveRequest::where('status', 'pending')->where('workspace_id', $current_workspace_id);
+    if (!is_admin_or_leave_editor()) {
+        $query->where('user_id', $user->id);
+    }
+    $pendingLeaveRequestsCount = $query->count();
 }
-$current_workspace_title = $current_workspace->title ?? 'No workspace(s) found';
-$messenger = new ChatifyMessenger();
-$unread = $messenger->totalUnseenMessages();
-$pending_todos_count = $user->todos(0)->count();
-$ongoing_meetings_count = $user->meetings('ongoing')->count();
-$query = LeaveRequest::where('status', 'pending')->where('workspace_id', $current_workspace_id);
-if (!is_admin_or_leave_editor()) {
-    $query->where('user_id', $user->id);
-}
-$pendingLeaveRequestsCount = $query->count();
 ?>
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme menu-container">
     <div class="app-brand demo">
@@ -62,23 +79,25 @@ $pendingLeaveRequestsCount = $query->count();
             <ul class="dropdown-menu">
                 @if ($total_workspaces > 0)
                     @foreach ($workspaces as $workspace)
-                        <?php $checked = $workspace->id == $current_workspace_id ? "<i class='menu-icon tf-icons bx bx-check-square text-primary'></i>" : "<i class='menu-icon tf-icons bx bx-square text-solid'></i>"; ?>
-                        <li>
-                            <a class="dropdown-item" href="{{ url('/workspaces/switch/' . $workspace->id) }}">
-                                {!! $checked !!}
-                                {{ $workspace->title }}
-                                {{-- Check if the workspace is marked as primary and display the badge --}}
-                                @if ($workspace->is_primary)
-                                    <span class="badge bg-success">{{ get_label('primary', 'Primary') }}</span>
-                                @endif
+                        @if ($workspace)
+                            <?php $checked = $workspace->id == $current_workspace_id ? "<i class='menu-icon tf-icons bx bx-check-square text-primary'></i>" : "<i class='menu-icon tf-icons bx bx-square text-solid'></i>"; ?>
+                            <li>
+                                <a class="dropdown-item" href="{{ url('/workspaces/switch/' . $workspace->id) }}">
+                                    {!! $checked !!}
+                                    {{ $workspace->title }}
+                                    {{-- Check if the workspace is marked as primary and display the badge --}}
+                                    @if ($workspace->is_primary)
+                                        <span class="badge bg-success">{{ get_label('primary', 'Primary') }}</span>
+                                    @endif
 
-                                {{-- Check if the workspace is the user's default and display the badge --}}
-                                @if ($user->default_workspace_id == $workspace->id)
-                                    <span class="badge bg-primary">{{ get_label('default', 'Default') }}</span>
-                                @endif
+                                    {{-- Check if the workspace is the user's default and display the badge --}}
+                                    @if ($user->default_workspace_id == $workspace->id)
+                                        <span class="badge bg-primary">{{ get_label('default', 'Default') }}</span>
+                                    @endif
 
-                            </a>
-                        </li>
+                                </a>
+                            </li>
+                        @endif
                     @endforeach
                     <li>
                         <hr class="dropdown-divider" />

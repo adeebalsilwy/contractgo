@@ -888,6 +888,10 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/reports/estimates-invoices', [ReportsController::class, 'showInvoicesReport'])->name('reports.invoices-report');
                 Route::get('/reports/invoices-report-data', [ReportsController::class, 'getInvoicesReportData'])->name('reports.invoices-report-data');
                 Route::get('/reports/export-invoices-report', [ReportsController::class, 'exportInvoicesReport'])->name('reports.export-invoices-report');
+                
+                // Extract Analytics
+                Route::get('/reports/extract-analytics', [ReportsController::class, 'showExtractAnalytics'])->name('reports.extract-analytics');
+                Route::get('/reports/extract-analytics-data', [ReportsController::class, 'getExtractAnalyticsData'])->name('reports.extract-analytics-data');
             });
 
             Route::middleware(['customcan:manage_payments'])->group(function () {
@@ -934,6 +938,8 @@ Route::middleware(['CheckInstallation'])->group(function () {
             Route::middleware(['customcan:manage_items'])->group(function () {
                 Route::resource('/item-pricing', ItemPricingController::class);
                 Route::get('/item-pricing-by-item-unit', [ItemPricingController::class, 'getPrice'])->name('item-pricing.get-price');
+                Route::get('/item-pricing/{itemPricing}/show', [ItemPricingController::class, 'show'])->name('item-pricing.show');
+                Route::get('/item-pricing/{itemPricing}/with-contract-obligations', [ItemPricingController::class, 'getPricingWithContractObligationsForItem'])->name('item-pricing.contract-obligations');
             });
 
             Route::middleware(['customcan:manage_payment_methods'])->group(function () {

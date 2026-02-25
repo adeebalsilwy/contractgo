@@ -224,7 +224,8 @@ class ClientController extends Controller
             $status = !$internal_purpose && isAdminOrHasAllDataAccess() && $request->has('status') && $request->input('status') == 1 ? 1 : 0;
 
             if (!$internal_purpose && $require_ev == 0) {
-                $formFields['email_verified_at'] = now()->tz(config('app.timezone'));
+                $timezone = config('app.timezone') ?: 'UTC';
+            $formFields['email_verified_at'] = now()->tz($timezone);
             }
             $formFields['status'] = $status;
 

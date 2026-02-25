@@ -11,13 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('role_status', function (Blueprint $table) {
-            $table->unsignedBigInteger('role_id');
-            $table->unsignedBigInteger('status_id');
-            $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
-            $table->foreign('status_id')->references('id')->on('statuses')->onDelete('cascade');
-            $table->primary(['role_id', 'status_id']);
-        });
+        if (!Schema::hasTable('role_status')) {
+            Schema::create('role_status', function (Blueprint $table) {
+                $table->unsignedBigInteger('role_id');
+                $table->unsignedBigInteger('status_id');
+                $table->primary(['role_id', 'status_id']);
+            });
+            
+            // Add foreign keys after table creation to avoid constraint issues
+            Schema::table('role_status', function (Blueprint $table) {
+                $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
+            });
+            
+            // Add the status_id foreign key separately to handle constraint issues
+            if (Schema::hasTable('statuses')) {
+                Schema::table('role_status', function (Blueprint $table) {
+                    $table->foreign('status_id')->references('id')->on('statuses')->onDelete('cascade');
+                });
+            }
+        }
     }
 
     /**

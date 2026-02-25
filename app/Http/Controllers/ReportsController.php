@@ -1234,4 +1234,111 @@ class ReportsController extends Controller
 
         return $pdf->download($fileName);
     }
+
+    /**
+     * Display extract analytics dashboard
+     */
+    public function showExtractAnalytics()
+    {
+        $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
+        
+        // Summary statistics
+        $total_estimates = $estimates_invoices->where('type', 'estimate')->count();
+        $total_invoices = $estimates_invoices->where('type', 'invoice')->count();
+        $total_extract_value = $estimates_invoices->sum('final_total');
+        
+        $paid_invoices = $estimates_invoices->where('type', 'invoice')->whereIn('status', ['fully_paid', 'partially_paid']);
+        $total_paid_amount = $paid_invoices->sum('final_total');
+        $total_paid_invoices = $paid_invoices->count();
+        
+        $unpaid_invoices = $estimates_invoices->where('type', 'invoice')->whereNotIn('status', ['fully_paid', 'partially_paid']);
+        $total_unpaid_amount = $unpaid_invoices->sum('final_total');
+        $total_unpaid_invoices = $unpaid_invoices->count();
+        
+        // Monthly trend data
+        $monthly_data = $estimates_invoices
+            ->select(
+                DB::raw('YEAR(created_at) as year'),
+                DB::raw('MONTH(created_at) as month'),
+                DB::raw('SUM(CASE WHEN type = "estimate" THEN 1 ELSE 0 END) as estimate_count'),
+                DB::raw('SUM(CASE WHEN type = "invoice" THEN 1 ELSE 0 END) as invoice_count'),
+                DB::raw('SUM(CASE WHEN type = "invoice" THEN final_total ELSE 0 END) as invoice_total')
+            )
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->limit(12)
+            ->get();
+        
+        // Status distribution
+        $status_distribution = $estimates_invoices
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get();
+        
+        // Top clients by extract value
+        $top_clients = $estimates_invoices
+            ->join('clients', 'estimates_invoices.client_id', '=', 'clients.id')
+            ->select(
+                'clients.id',
+                DB::raw('CONCAT(clients.first_name, " ", clients.last_name) as client_name'),
+                DB::raw('SUM(estimates_invoices.final_total) as total_value'),
+                DB::raw('COUNT(estimates_invoices.id) as document_count')
+            )
+            ->groupBy('clients.id', 'clients.first_name', 'clients.last_name')
+            ->orderBy('total_value', 'desc')
+            ->limit(10)
+            ->get();
+        
+        return view('reports.extract-analytics', compact(
+            'total_estimates',
+            'total_invoices',
+            'total_extract_value',
+            'total_paid_amount',
+            'total_paid_invoices',
+            'total_unpaid_amount',
+            'total_unpaid_invoices',
+            'monthly_data',
+            'status_distribution',
+            'top_clients'
+        ));
+    }
+    
+    /**
+     * Get extract analytics data for AJAX requests
+     */
+    public function getExtractAnalyticsData(Request $request)
+    {
+        $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
+        
+        // Filter by date range if provided
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $estimates_invoices->whereBetween('created_at', [
+                $request->start_date,
+                $request->end_date
+            ]);
+        }
+        
+        // Get data for charts
+        $monthly_trend = $estimates_invoices
+            ->select(
+                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw('SUM(CASE WHEN type = "estimate" THEN 1 ELSE 0 END) as estimates'),
+                DB::raw('SUM(CASE WHEN type = "invoice" THEN 1 ELSE 0 END) as invoices'),
+                DB::raw('SUM(CASE WHEN type = "invoice" THEN final_total ELSE 0 END) as revenue')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+        
+        $status_data = $estimates_invoices
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->get();
+        
+        return response()->json([
+            'monthly_trend' => $monthly_trend,
+            'status_data' => $status_data
+        ]);
+    }
 }

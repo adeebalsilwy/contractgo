@@ -2702,15 +2702,16 @@ if (!function_exists('formatInterview')) {
 if (!function_exists('formatMeeting')) {
     function formatMeeting($meeting)
     {
-        $currentDateTime = Carbon::now(config('app.timezone'));
-        $status = (($currentDateTime < \Carbon\Carbon::parse($meeting->start_date_time, config('app.timezone'))) ? 'Will start in ' . $currentDateTime->diff(\Carbon\Carbon::parse($meeting->start_date_time, config('app.timezone')))->format('%a days %H hours %I minutes %S seconds') : (($currentDateTime > \Carbon\Carbon::parse($meeting->end_date_time, config('app.timezone')) ? 'Ended before ' . \Carbon\Carbon::parse($meeting->end_date_time, config('app.timezone'))->diff($currentDateTime)->format('%a days %H hours %I minutes %S seconds') : 'Ongoing')));
+        $timezone = config('app.timezone') ?: 'UTC';
+        $currentDateTime = Carbon::now($timezone);
+        $status = (($currentDateTime < \Carbon\Carbon::parse($meeting->start_date_time, $timezone)) ? 'Will start in ' . $currentDateTime->diff(\Carbon\Carbon::parse($meeting->start_date_time, $timezone))->format('%a days %H hours %I minutes %S seconds') : (($currentDateTime > \Carbon\Carbon::parse($meeting->end_date_time, $timezone)) ? 'Ended before ' . \Carbon\Carbon::parse($meeting->end_date_time, $timezone)->diff($currentDateTime)->format('%a days %H hours %I minutes %S seconds') : 'Ongoing'));
         return [
             'id' => $meeting->id,
             'title' => $meeting->title,
-            'start_date' => \Carbon\Carbon::parse($meeting->start_date_time)->format('Y-m-d'),
-            'start_time' => \Carbon\Carbon::parse($meeting->start_date_time)->format('H:i'),
-            'end_date' => \Carbon\Carbon::parse($meeting->end_date_time)->format('Y-m-d'),
-            'end_time' => \Carbon\Carbon::parse($meeting->end_date_time)->format('H:i'),
+            'start_date' => \Carbon\Carbon::parse($meeting->start_date_time, $timezone)->format('Y-m-d'),
+            'start_time' => \Carbon\Carbon::parse($meeting->start_date_time, $timezone)->format('H:i'),
+            'end_date' => \Carbon\Carbon::parse($meeting->end_date_time, $timezone)->format('Y-m-d'),
+            'end_time' => \Carbon\Carbon::parse($meeting->end_date_time, $timezone)->format('H:i'),
             'users' => $meeting->users->map(function ($user) {
                 return [
                     'id' => $user->id,
@@ -3668,6 +3669,13 @@ if (!function_exists('getMenus')) {
                         'label' => get_label('estimates_invoices', 'Estimates/Invoices'),
                         'url' => route('reports.invoices-report'),
                         'class' => 'menu-item' . (Request::is('reports/estimates-invoices') ? ' active' : ''),
+                        'show' => checkPermission('manage_estimates_invoices') ? 1 : 0,
+                    ],
+                    [
+                        'id' => 'extract_analytics',
+                        'label' => get_label('extract_analytics', 'Extract Analytics'),
+                        'url' => route('reports.extract-analytics'),
+                        'class' => 'menu-item' . (Request::is('reports/extract-analytics') ? ' active' : ''),
                         'show' => checkPermission('manage_estimates_invoices') ? 1 : 0,
                     ],
                     [

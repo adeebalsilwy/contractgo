@@ -24,6 +24,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'صنعاء',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'الهيئة',
@@ -35,6 +38,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'صنعاء',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'شركة',
@@ -46,6 +52,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'صنعاء',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'مؤسسة',
@@ -57,6 +66,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'تعز',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'شركة',
@@ -68,6 +80,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'عدن',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'الهيئة',
@@ -79,6 +94,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'صنعاء',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'شركة',
@@ -90,6 +108,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'الحديدة',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'مؤسسة',
@@ -101,6 +122,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'المكلا',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'شركة',
@@ -112,6 +136,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'ريمة',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
             [
                 'first_name' => 'الهيئة',
@@ -123,6 +150,9 @@ class YemeniClientsSeeder extends Seeder
                 'city' => 'صنعاء',
                 'country' => 'اليمن',
                 'default_workspace_id' => 1,
+                'password' => bcrypt('12345678'),
+                'state' => 'صنعاء', // Default state
+                'zip' => '11111', // Default zip code
             ],
         ];
 

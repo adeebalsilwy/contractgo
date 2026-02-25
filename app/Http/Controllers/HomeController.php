@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Workspace;
 use App\Models\CustomField;
 use App\Models\LeaveRequest;
+use App\Models\EstimatesInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
@@ -48,7 +49,45 @@ class HomeController extends Controller
             $activities = collect(); // Return an empty collection to avoid errors
         }
         $customFields = CustomField::all();
-        return view('dashboard', ['users' => $users, 'clients' => $clients, 'projects' => $projects, 'tasks' => $tasks, 'todos' => $todos, 'total_todos' => $total_todos, 'meetings' => $meetings, 'auth_user' => $this->user, 'activities' => $activities, 'customFields' => $customFields]);
+        // Extract statistics
+        $total_estimates = 0;
+        $total_invoices = 0;
+        $total_paid_invoices = 0;
+        $total_unpaid_invoices = 0;
+        $total_extract_amount = 0;
+        $total_paid_amount = 0;
+        
+        if ($this->user->can('manage_estimates_invoices')) {
+            $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
+            $total_estimates = $estimates_invoices->where('type', 'estimate')->count();
+            $total_invoices = $estimates_invoices->where('type', 'invoice')->count();
+            
+            $paid_invoices = $estimates_invoices->where('type', 'invoice')->whereIn('status', ['fully_paid', 'partially_paid']);
+            $total_paid_invoices = $paid_invoices->count();
+            $total_unpaid_invoices = $total_invoices - $total_paid_invoices;
+            
+            $total_extract_amount = $estimates_invoices->sum('final_total');
+            $total_paid_amount = $paid_invoices->sum('final_total');
+        }
+        
+        return view('dashboard', [
+            'users' => $users, 
+            'clients' => $clients, 
+            'projects' => $projects, 
+            'tasks' => $tasks, 
+            'todos' => $todos, 
+            'total_todos' => $total_todos, 
+            'meetings' => $meetings, 
+            'auth_user' => $this->user, 
+            'activities' => $activities, 
+            'customFields' => $customFields,
+            'total_estimates' => $total_estimates,
+            'total_invoices' => $total_invoices,
+            'total_paid_invoices' => $total_paid_invoices,
+            'total_unpaid_invoices' => $total_unpaid_invoices,
+            'total_extract_amount' => $total_extract_amount,
+            'total_paid_amount' => $total_paid_amount
+        ]);
     }
     public function upcoming_birthdays()
     {
@@ -650,7 +689,7 @@ class HomeController extends Controller
         $page = request('page', 1);
         $currentDate = today();
         $upcomingDate = $currentDate->copy()->addDays($upcoming_days);
-        $timezone = config('app.timezone');
+        $timezone = config('app.timezone') ?: 'UTC';
         // Base leave query with GROUP BY user_id to prevent duplicates
         $leaveUsers = DB::table('leave_requests')
             ->leftJoin('users', 'leave_requests.user_id', '=', 'users.id')
@@ -1220,6 +1259,12 @@ class HomeController extends Controller
             $total_completed_todos_count = 0;
             $total_pending_todos_count = 0;
             $total_meetings_count = 0;
+            $total_estimates_count = 0;
+            $total_invoices_count = 0;
+            $total_paid_invoices_count = 0;
+            $total_unpaid_invoices_count = 0;
+            $total_extract_amount = 0;
+            $total_paid_amount = 0;
             // Fetch total counts
             if ($this->user->can('manage_projects')) {
                 $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects ?? [] : $this->user->projects ?? [];
@@ -1244,6 +1289,20 @@ class HomeController extends Controller
             if ($this->user->can('manage_meetings')) {
                 $meetings = isAdminOrHasAllDataAccess() ? $this->workspace->meetings ?? [] : $this->user->meetings ?? [];
                 $total_meetings_count = $meetings->count();
+            }
+
+            // Extract/Invoice Statistics
+            if ($this->user->can('manage_estimates_invoices')) {
+                $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
+                $total_estimates_count = $estimates_invoices->where('type', 'estimate')->count();
+                $total_invoices_count = $estimates_invoices->where('type', 'invoice')->count();
+                
+                $paid_invoices = $estimates_invoices->where('type', 'invoice')->whereIn('status', ['fully_paid', 'partially_paid']);
+                $total_paid_invoices_count = $paid_invoices->count();
+                $total_unpaid_invoices_count = $total_invoices_count - $total_paid_invoices_count;
+                
+                $total_extract_amount = $estimates_invoices->sum('final_total');
+                $total_paid_amount = $paid_invoices->sum('final_total');
             }
             // Assign colors to status-wise projects
             if ($this->user->can('manage_projects')) {
@@ -1288,6 +1347,12 @@ class HomeController extends Controller
                         'total_todos' => $total_todos_count,
                         'completed_todos' => $total_completed_todos_count,
                         'pending_todos' => $total_pending_todos_count,
+                        'total_estimates' => $total_estimates_count,
+                        'total_invoices' => $total_invoices_count,
+                        'total_paid_invoices' => $total_paid_invoices_count,
+                        'total_unpaid_invoices' => $total_unpaid_invoices_count,
+                        'total_extract_amount' => $total_extract_amount,
+                        'total_paid_amount' => $total_paid_amount,
                         'status_wise_projects' => $statusCountsProjects,
                         'status_wise_tasks' => $statusCountsTasks
                     ]

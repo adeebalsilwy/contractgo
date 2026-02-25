@@ -26,6 +26,7 @@ Thumbs.db
 
 # Ignore uploaded files & demo zips (custom)
 public/assets/demo_data/public.zip
+public/assets/demo_data/
 
 # Laravel Mix & Vite
 /public/hot

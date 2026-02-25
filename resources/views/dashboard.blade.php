@@ -67,12 +67,56 @@
                         'link_color' => 'text-info',
                     ],
                 ];
+                
+                // Add extract tiles if user has permission
+                if ($auth_user->can('manage_estimates_invoices')) {
+                    $extractTiles = [
+                        'total_estimates' => [
+                            'permission' => 'manage_estimates_invoices',
+                            'icon' => 'bx bx-file text-info',
+                            'icon-bg' => 'bg-label-info',
+                            'label' => get_label('total_estimates', 'Total Estimates'),
+                            'count' => $total_estimates ?? 0,
+                            'url' => url('estimates-invoices') . '?type=estimate',
+                            'link_color' => 'text-info',
+                        ],
+                        'total_invoices' => [
+                            'permission' => 'manage_estimates_invoices',
+                            'icon' => 'bx bx-receipt text-success',
+                            'icon-bg' => 'bg-label-success',
+                            'label' => get_label('total_invoices', 'Total Invoices'),
+                            'count' => $total_invoices ?? 0,
+                            'url' => url('estimates-invoices') . '?type=invoice',
+                            'link_color' => 'text-success',
+                        ],
+                        'paid_invoices' => [
+                            'permission' => 'manage_estimates_invoices',
+                            'icon' => 'bx bx-check-circle text-success',
+                            'icon-bg' => 'bg-label-success',
+                            'label' => get_label('paid_invoices', 'Paid Invoices'),
+                            'count' => $total_paid_invoices ?? 0,
+                            'url' => url('estimates-invoices') . '?type=invoice&status=fully_paid,partially_paid',
+                            'link_color' => 'text-success',
+                        ],
+                        'unpaid_invoices' => [
+                            'permission' => 'manage_estimates_invoices',
+                            'icon' => 'bx bx-x-circle text-danger',
+                            'icon-bg' => 'bg-label-danger',
+                            'label' => get_label('unpaid_invoices', 'Unpaid Invoices'),
+                            'count' => $total_unpaid_invoices ?? 0,
+                            'url' => url('estimates-invoices') . '?type=invoice&status=pending,draft',
+                            'link_color' => 'text-danger',
+                        ]
+                    ];
+                    $tiles = array_merge($tiles, $extractTiles);
+                }
+                
                 // Filter tiles based on user permissions
                 $filteredTiles = array_filter($tiles, function ($tile) use ($auth_user) {
                     return !$tile['permission'] || $auth_user->can($tile['permission']);
                 });
-                // Get the first 4 tiles
-                $filteredTiles = array_slice($filteredTiles, 0, 4);
+                // Get the first 6 tiles (instead of 4 to accommodate extracts)
+                $filteredTiles = array_slice($filteredTiles, 0, 6);
             @endphp
 
 

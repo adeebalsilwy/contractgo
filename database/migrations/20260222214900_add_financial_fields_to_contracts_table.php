@@ -12,11 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('contracts', function (Blueprint $table) {
-            $table->string('financial_status')->nullable()->after('workflow_notes');
-            $table->unsignedBigInteger('invoice_reference')->nullable()->after('financial_status');
-            
-            // Add foreign key constraint
-            $table->foreign('invoice_reference')->references('id')->on('estimates_invoices')->onDelete('set null');
+            if (!Schema::hasColumn('contracts', 'financial_status')) {
+                $table->string('financial_status')->nullable(); // Don't specify position to avoid dependency
+            }
+            if (!Schema::hasColumn('contracts', 'invoice_reference')) {
+                $table->unsignedBigInteger('invoice_reference')->nullable(); // Don't specify position to avoid dependency
+                
+                // Add foreign key constraint after column is added
+                $table->foreign('invoice_reference')->references('id')->on('estimates_invoices')->onDelete('set null');
+            }
         });
     }
 
@@ -26,7 +30,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('contracts', function (Blueprint $table) {
-            $table->dropForeign(['invoice_reference']);
+            if (Schema::hasColumn('contracts', 'invoice_reference')) {
+                $table->dropForeign(['invoice_reference']);
+            }
             $table->dropColumn(['financial_status', 'invoice_reference']);
         });
     }

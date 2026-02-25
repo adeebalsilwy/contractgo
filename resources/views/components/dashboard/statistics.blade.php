@@ -32,14 +32,48 @@
             <x-dashboard.todo-list :todos="$todos" />
         </x-dashboard.card>
     </div>
-    @if ($auth_user->hasRole('admin'))
-        <div class="col-md-6 draggable-item" data-id="income-vs-expense">
+    @if ($auth_user->can('manage_estimates_invoices'))
+        <div class="col-md-6 col-sm-12 draggable-item" data-id="extract-statistics">
+            <x-dashboard.card :title="get_label('extract_statistics', 'Extract Statistics')" chart-id="extractStatisticsChart">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">{{ get_label('total_extract_value', 'Total Extract Value') }}</span>
+                            <span class="fw-bold text-primary">{{ format_currency($total_extract_amount ?? 0) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">{{ get_label('total_paid_amount', 'Total Paid Amount') }}</span>
+                            <span class="fw-bold text-success">{{ format_currency($total_paid_amount ?? 0) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">{{ get_label('outstanding_amount', 'Outstanding Amount') }}</span>
+                            <span class="fw-bold text-danger">{{ format_currency(($total_extract_amount ?? 0) - ($total_paid_amount ?? 0)) }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">{{ get_label('estimates', 'Estimates') }}</span>
+                            <span class="badge bg-info">{{ $total_estimates ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">{{ get_label('invoices', 'Invoices') }}</span>
+                            <span class="badge bg-success">{{ $total_invoices ?? 0 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted">{{ get_label('paid_invoices', 'Paid Invoices') }}</span>
+                            <span class="badge bg-success">{{ $total_paid_invoices ?? 0 }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="extractStatisticsChart"></div>
+            </x-dashboard.card>
+        </div>
+        <div class="col-md-6 col-sm-12 draggable-item" data-id="income-vs-expense">
             <x-dashboard.card :title="get_label('income_vs_expense', 'Income vs Expense')">
                 <input type="text" id="filter_date_range_income_expense" class="form-control mb-3"
                     placeholder="{{ get_label('date_between', 'Date Between') }}" autocomplete="off">
                 <input type="hidden" id="filter_date_range_from" name="start_date">
-<input type="hidden" id="filter_date_range_to" name="end_date">
-
+                <input type="hidden" id="filter_date_range_to" name="end_date">
                 <div id="income-expense-chart"></div>
             </x-dashboard.card>
         </div>

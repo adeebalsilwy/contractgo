@@ -8,15 +8,17 @@ class CreateContractTypesTable extends Migration
 {
     public function up()
     {
-        Schema::create('contract_types', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('workspace_id')->nullable();
-            $table->string('type'); // Add a column for the contract type name
-            $table->timestamps();
+        if (!Schema::hasTable('contract_types')) {
+            Schema::create('contract_types', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('workspace_id')->nullable();
+                $table->string('type'); // Add a column for the contract type name
+                $table->timestamps();
 
-            // Define foreign key constraints            
-            $table->foreign('workspace_id')->references('id')->on('workspaces')->onDelete('cascade');
-        });
+                // Define foreign key constraints            
+                $table->foreign('workspace_id')->references('id')->on('workspaces')->onDelete('cascade');
+            });
+        }
     }
 
     public function down()

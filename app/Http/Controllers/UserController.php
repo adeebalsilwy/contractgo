@@ -243,7 +243,8 @@ class UserController extends Controller
             // Determine email verification and status
             $require_ev = isAdminOrHasAllDataAccess() && $request->has('require_ev') && $request->input('require_ev') == 0 ? 0 : 1;
             $status = isAdminOrHasAllDataAccess() && $request->has('status') && $request->input('status') == 1 ? 1 : 0;
-            $formFields['email_verified_at'] = $require_ev == 0 ? now()->tz(config('app.timezone')) : null;
+            $timezone = config('app.timezone') ?: 'UTC';
+            $formFields['email_verified_at'] = $require_ev == 0 ? now()->tz($timezone) : null;
             $formFields['status'] = $status;
 
             try {

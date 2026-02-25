@@ -41,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at',
         'default_workspace_id',
         'fcm_token',
+        'lang',
     ];
 
     /**
@@ -105,8 +106,9 @@ class User extends Authenticatable implements MustVerifyEmail
         $meetings = $this->belongsToMany(Meeting::class)->where('workspace_id', '=', getWorkspaceId());
 
         if ($status !== null && $status == 'ongoing') {
-            $meetings->where('start_date_time', '<=', Carbon::now(config('app.timezone')))
-                ->where('end_date_time', '>=', Carbon::now(config('app.timezone')));
+            $timezone = config('app.timezone') ?: 'UTC';
+            $meetings->where('start_date_time', '<=', Carbon::now($timezone))
+                ->where('end_date_time', '>=', Carbon::now($timezone));
         }
 
         return $meetings;

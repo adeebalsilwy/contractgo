@@ -257,8 +257,6 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Get settings with defaults applied.
      */
-
-
     private function getSettingsWithDefaults(string $key, array $defaults): array
     {
         $settings = get_settings($key);
@@ -274,7 +272,13 @@ class AppServiceProvider extends ServiceProvider
                 $settings = $decoded;
             }
         }
-        $merged = array_merge($defaults, is_array($settings) ? $settings : []);
+        
+        // Make sure $settings is an array before processing
+        if (!is_array($settings)) {
+            $settings = [];
+        }
+        
+        $merged = array_merge($defaults, $settings);
 
         // Ensure that if $settings value is empty, fallback to default
         foreach ($defaults as $key => $defaultValue) {
@@ -334,19 +338,24 @@ class AppServiceProvider extends ServiceProvider
     private function configureAppDefaults(array $settings): void
     {
         // Application timezone
-        config(['app.timezone' => $settings['general']['timezone']]);
+        $timezone = $settings['general']['timezone'] ?? config('app.timezone', 'UTC');
+        config(['app.timezone' => $timezone ?: 'UTC']);
 
         // Media library max file size
-        config(['media-library.max_file_size' => 1024 * 1024 * $settings['general']['allowed_max_upload_size']]);
+        $maxUploadSize = $settings['general']['allowed_max_upload_size'] ?? 512;
+        config(['media-library.max_file_size' => 1024 * 1024 * $maxUploadSize]);
 
         // Pusher configuration
-        $this->configurePusher($settings['pusher']);
+        $this->configurePusher($settings['pusher'] ?? []);
 
         // Mail configuration
-        $this->configureMail($settings['email'], $settings['general']['company_title']);
+        $this->configureMail($settings['email'] ?? [], $settings['general']['company_title'] ?? 'Taskify');
 
-        // Filesystem configuration
-        $this->configureFilesystem($settings['media_storage']);
+        // Filesystem configuration - only pass valid config
+        $mediaStorageSettings = $settings['media_storage'] ?? [];
+        if (is_array($mediaStorageSettings)) {
+            $this->configureFilesystem($mediaStorageSettings);
+        }
     }
 
     /**
@@ -391,14 +400,37 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureFilesystem(array $mediaStorageSettings): void
     {
-        config([
-            'filesystems.disks.s3' => [
-                'key' => $mediaStorageSettings['s3_key'],
-                'secret' => $mediaStorageSettings['s3_secret'],
-                'region' => $mediaStorageSettings['s3_region'],
-                'bucket' => $mediaStorageSettings['s3_bucket'],
-            ]
-        ]);
+        try {
+            // Ensure we have valid media storage settings
+            if (!is_array($mediaStorageSettings)) {
+                return;
+            }
+            
+            // Only configure S3 if media storage type is s3 and has valid configuration
+            if (isset($mediaStorageSettings['media_storage_type']) && $mediaStorageSettings['media_storage_type'] === 's3') {
+                $s3Config = [
+                    'key' => $mediaStorageSettings['s3_key'] ?? null,
+                    'secret' => $mediaStorageSettings['s3_secret'] ?? null,
+                    'region' => $mediaStorageSettings['s3_region'] ?? null,
+                    'bucket' => $mediaStorageSettings['s3_bucket'] ?? null,
+                ];
+                
+                // Only set config if all required S3 values are present and valid
+                if ($s3Config['key'] && $s3Config['secret'] && $s3Config['region'] && $s3Config['bucket']) {
+                    // Make sure we're setting proper associative array configurations
+                    config([
+                        'filesystems.disks.s3.driver' => 's3',
+                        'filesystems.disks.s3.key' => $s3Config['key'],
+                        'filesystems.disks.s3.secret' => $s3Config['secret'],
+                        'filesystems.disks.s3.region' => $s3Config['region'],
+                        'filesystems.disks.s3.bucket' => $s3Config['bucket'],
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail to avoid breaking the application
+            \Log::warning('Failed to configure filesystem: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -525,7 +557,7 @@ class AppServiceProvider extends ServiceProvider
         return $manifest;
     }
 
-    // reCAPATCHA
+    // reCAPTCHA
     private function configureRecaptcha(array $generalSettings): void
     {
         if (!empty($generalSettings['recaptcha_site_key']) && !empty($generalSettings['recaptcha_secret_key'])) {
