@@ -42,8 +42,9 @@ class ContractsController extends Controller
         $projects = $this->workspace->projects()->get();
         $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
         $users = User::where('workspace_id', $this->workspace->id)->get();
+        $extracts = $this->workspace->estimates_invoices()->whereNull('contract_id')->get();
         
-        return view('contracts.create', compact('clients', 'projects', 'contractTypes', 'users'));
+        return view('contracts.create', compact('clients', 'projects', 'contractTypes', 'users', 'extracts'));
     }
 
     public function edit($id)
@@ -53,8 +54,11 @@ class ContractsController extends Controller
         $projects = $this->workspace->projects()->get();
         $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
         $users = User::where('workspace_id', $this->workspace->id)->get();
+        $extracts = $this->workspace->estimates_invoices()->where(function($query) use ($id) {
+            $query->whereNull('contract_id')->orWhere('contract_id', $id);
+        })->get();
         
-        return view('contracts.edit', compact('contract', 'clients', 'projects', 'contractTypes', 'users'));
+        return view('contracts.edit', compact('contract', 'clients', 'projects', 'contractTypes', 'users', 'extracts'));
     }
 
     public function dashboard()
@@ -215,6 +219,16 @@ class ContractsController extends Controller
             $formFields['created_by'] = isClient() ? 'c_' . $this->user->id : 'u_' . $this->user->id;
 
             if ($contract = Contract::create($formFields)) {
+                // Handle extract linking
+                if ($request->has('extracts') && is_array($request->extracts)) {
+                    foreach ($request->extracts as $extractId) {
+                        $extract = EstimatesInvoice::find($extractId);
+                        if ($extract && $extract->contract_id === null) {
+                            $extract->update(['contract_id' => $contract->id]);
+                        }
+                    }
+                }
+                
                 if ($isApi) {
                     return formatApiResponse(
                         false,
@@ -380,6 +394,31 @@ class ContractsController extends Controller
 
             // Update the contract
             if ($contract->update($formFields)) {
+                // Handle extract linking/unlinking
+                if ($request->has('extracts') && is_array($request->extracts)) {
+                    // Get currently linked extracts
+                    $currentExtractIds = $contract->estimates->pluck('id')->toArray();
+                    $newExtractIds = $request->extracts;
+                    
+                    // Unlink extracts that were removed
+                    $extractsToUnlink = array_diff($currentExtractIds, $newExtractIds);
+                    foreach ($extractsToUnlink as $extractId) {
+                        $extract = EstimatesInvoice::find($extractId);
+                        if ($extract && $extract->contract_id == $contract->id) {
+                            $extract->update(['contract_id' => null]);
+                        }
+                    }
+                    
+                    // Link new extracts
+                    $extractsToLink = array_diff($newExtractIds, $currentExtractIds);
+                    foreach ($extractsToLink as $extractId) {
+                        $extract = EstimatesInvoice::find($extractId);
+                        if ($extract && $extract->contract_id === null) {
+                            $extract->update(['contract_id' => $contract->id]);
+                        }
+                    }
+                }
+                
                 if ($isApi) {
                     return formatApiResponse(
                         false,
@@ -416,6 +455,28 @@ class ContractsController extends Controller
 
     public function list()
     {
+        // Handle stats request
+        if (request()->has('stats_only') && request('stats_only')) {
+            $contracts = isAdminOrHasAllDataAccess() ? $this->workspace->contracts() : $this->user->contracts();
+            $total = $contracts->count();
+            $signed = $contracts->where(function ($query) {
+                $query->whereNotNull('promisor_sign')
+                    ->whereNotNull('promisee_sign');
+            })->count();
+            $pending = $contracts->where(function ($query) {
+                $query->whereNull('promisor_sign')
+                    ->whereNull('promisee_sign');
+            })->count();
+            $totalValue = $contracts->sum('value');
+            
+            return response()->json([
+                'total' => $total,
+                'signed' => $signed,
+                'pending' => $pending,
+                'total_value' => $totalValue
+            ]);
+        }
+        
         $search = request('search');
         $sort = (request('sort')) ? request('sort') : "id";
         $order = (request('order')) ? request('order') : "DESC";
@@ -898,7 +959,42 @@ class ContractsController extends Controller
      * }
      */
 
-    public function show($id)
+    /**
+     * Display the contract signing page
+     *
+     * This endpoint displays the contract signing page where users can sign a contract
+     *
+     * @authenticated
+     *
+     * @group Contract Management
+     *
+     * @urlParam id integer required The ID of the contract to sign. Must exist in the contracts table. Example: 15
+     *
+     * @response 200 {
+     *   "error": false,
+     *   "message": "Contract signing page loaded successfully.",
+     *   "data": []
+     * }
+     *
+     * @response 404 {
+     *   "error": true,
+     *   "message": "Contract not found.",
+     *   "data": []
+     * }
+     *
+     * @response 403 {
+     *   "error": true,
+     *   "message": "Access denied.",
+     *   "data": []
+     * }
+     *
+     * @response 500 {
+     *   "error": true,
+     *   "message": "An error occurred.",
+     *   "data": []
+     * }
+     */
+    public function sign($id)
     {
         $contract = Contract::with([
             'client', 
@@ -921,7 +1017,161 @@ class ContractsController extends Controller
             'journalEntries as journal_entries_count'
         ]);
         
-        return view('contracts.show', compact('contract'));
+        return view('contracts.sign', compact('contract'));
+    }
+
+    public function show($id)
+    {
+        $contract = Contract::with([
+            'client', 
+            'project', 
+            'contract_type', 
+            'siteSupervisor', 
+            'quantityApprover', 
+            'accountant', 
+            'reviewer', 
+            'finalApprover',
+            'createdBy',
+            'archivedBy',
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries',
+            'estimates'
+        ])->with(['estimates.items.unit', 'invoices.items.unit', 'quantities.item.unit'])->findOrFail($id);
+        
+        // Load related module counts
+        $contract->loadCount([
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries as journal_entries_count'
+        ]);
+        
+        // Load related tasks - get tasks associated with the project that this contract is linked to
+        $tasks = $contract->project ? $contract->project->tasks()->with(['status', 'priority', 'users', 'clients'])->get() : collect();
+        
+        // Load related users/clients for project
+        $projectUsers = $contract->project ? $contract->project->users : collect();
+        $projectClients = $contract->project ? $contract->project->clients : collect();
+        
+        // Load statuses and priorities for tasks
+        $statuses = app('App\Http\Controllers\StatusController')->getStatuses('task');
+        $priorities = app('App\Http\Controllers\PriorityController')->getPriorities();
+        
+        return view('contracts.show', compact('contract', 'tasks', 'projectUsers', 'projectClients', 'statuses', 'priorities'));
+    }
+
+    /**
+     * Display contract mind map
+     */
+    public function mind_map($id)
+    {
+        $contract = Contract::with([
+            'client', 
+            'project', 
+            'contract_type', 
+            'siteSupervisor', 
+            'quantityApprover', 
+            'accountant', 
+            'reviewer', 
+            'finalApprover',
+            'createdBy',
+            'archivedBy',
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries'
+        ])->findOrFail($id);
+        
+        // Load related module counts
+        $contract->loadCount([
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries as journal_entries_count'
+        ]);
+        
+        // Load related tasks - get tasks associated with the project that this contract is linked to
+        $tasks = $contract->project ? $contract->project->tasks()->with(['status', 'priority', 'users', 'clients'])->get() : collect();
+        
+        return view('contracts.mind_map', compact('contract', 'tasks'));
+    }
+
+    /**
+     * Generate PDF for a contract
+     */
+    public function generatePdf($id)
+    {
+        $contract = Contract::with([
+            'client', 
+            'project', 
+            'contract_type', 
+            'siteSupervisor', 
+            'quantityApprover', 
+            'accountant', 
+            'reviewer', 
+            'finalApprover',
+            'createdBy',
+            'archivedBy',
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries'
+        ])->findOrFail($id);
+        
+        // Load related module counts
+        $contract->loadCount([
+            'quantities',
+            'approvals',
+            'amendments',
+            'journalEntries as journal_entries_count'
+        ]);
+        
+        // Prepare company info
+        $companyInfo = [
+            'name' => config('app.name', 'Modern Real Estate Company'),
+            'address' => 'Aden Sanaa Street, Al Omari Junction, Aden',
+            'phone' => '02383846',
+            'website' => 'www.aqariah.com'
+        ];
+        
+        // Prepare items/quantities data
+        $items = [];
+        if ($contract->quantities && $contract->quantities->count() > 0) {
+            foreach ($contract->quantities as $quantity) {
+                $items[] = [
+                    'description' => $quantity->description,
+                    'unit' => $quantity->unit,
+                    'quantity' => $quantity->quantity,
+                    'unit_price' => $quantity->unit_price
+                ];
+            }
+        } else {
+            // Default sample item if no quantities exist
+            $items[] = [
+                'description' => get_label('gypsum_board_work_including_materials', 'Gypsum board work including materials'),
+                'unit' => 'm²',
+                'quantity' => 13600,
+                'unit_price' => 68
+            ];
+        }
+        
+        $general_settings = [];
+        $settings = \App\Models\Setting::all();
+        foreach ($settings as $setting) {
+            $general_settings[$setting->variable] = $setting->value;
+        }
+        
+        // Render the view for PDF generation
+        $html = view('contracts.pdf_template', compact('contract', 'companyInfo', 'items', 'general_settings'))->render();
+        
+        // Generate PDF using DomPDF
+        $pdf = \App::make('dompdf.wrapper');
+        $pdf->loadHTML($html);
+        
+        // Return the PDF for download
+        return $pdf->download('contract_' . $contract->id . '.pdf');
     }
 
     public function get($id)

@@ -32,8 +32,9 @@ class JournalEntriesController extends Controller
     public function index()
     {
         $journalEntries = isAdminOrHasAllDataAccess() 
-            ? $this->workspace->journalEntries() 
-            : $this->user->journalEntries();
+            ? JournalEntry::where('workspace_id', $this->workspace->id)
+            : JournalEntry::where('workspace_id', $this->workspace->id)
+                         ->where('created_by', $this->user->id);
         
         $journalEntries = $journalEntries->count();
         return view('journal-entries.index', ['journalEntries' => $journalEntries]);
@@ -98,6 +99,7 @@ class JournalEntriesController extends Controller
                 'account_name' => $request->account_name,
                 'created_by' => $this->user->id,
                 'status' => $request->status,
+                'workspace_id' => $this->workspace->id,
                 'integration_data' => ['onyx_pro_synced' => false],
             ]);
 

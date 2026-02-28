@@ -198,6 +198,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\ItemPricingServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        App\Providers\WorkspaceServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
         Anhskohbo\NoCaptcha\NoCaptchaServiceProvider::class,
 
@@ -224,5 +225,7 @@ return [
 
     'system_id' => env('APP_SYSTEM_ID', '48903161'),
 
+
+    'pwa_enabled' => env('PWA_ENABLED', true),
 
 ];

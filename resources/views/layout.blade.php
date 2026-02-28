@@ -44,6 +44,22 @@
     <link href="{{ asset('assets/css/fullcalendar/list/main.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/js-draw.css') }}" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@24.3.4/build/css/intlTelInput.css">
+<style>
+    .layout-page {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+    .content-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .footer-container {
+        width: 100%;
+        margin-top: auto;
+    }
+</style>
 
     <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@24.3.4/build/js/intlTelInput.min.js"></script>
 
@@ -106,11 +122,13 @@
                             @include('modals')
                             @include('offcanvas')
                         @endif
+                        <!-- Footer -->
+                        <div class="footer-container mt-4">
+                            <x-footer />
+                        </div>
+                        <!-- /Footer -->
                     </div>
                     <!-- Content wrapper -->
-                    <!-- footer -->
-                    <x-footer />
-                    <!-- / footer -->
                 @else
                     <div class="container-fluid container-p-y">
                         <div class="misc-wrapper d-flex flex-column align-items-center justif-content-center">

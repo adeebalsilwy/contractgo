@@ -58,16 +58,16 @@ class HomeController extends Controller
         $total_paid_amount = 0;
         
         if ($this->user->can('manage_estimates_invoices')) {
-            $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
-            $total_estimates = $estimates_invoices->where('type', 'estimate')->count();
-            $total_invoices = $estimates_invoices->where('type', 'invoice')->count();
+            $estimates_invoices = isAdminOrHasAllDataAccess() && $this->workspace ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
+            $total_estimates = $estimates_invoices ? $estimates_invoices->where('type', 'estimate')->count() : 0;
+            $total_invoices = $estimates_invoices ? $estimates_invoices->where('type', 'invoice')->count() : 0;
             
-            $paid_invoices = $estimates_invoices->where('type', 'invoice')->whereIn('status', ['fully_paid', 'partially_paid']);
-            $total_paid_invoices = $paid_invoices->count();
+            $paid_invoices = $estimates_invoices ? $estimates_invoices->where('type', 'invoice')->whereIn('status', ['fully_paid', 'partially_paid']) : collect();
+            $total_paid_invoices = $paid_invoices ? $paid_invoices->count() : 0;
             $total_unpaid_invoices = $total_invoices - $total_paid_invoices;
             
-            $total_extract_amount = $estimates_invoices->sum('final_total');
-            $total_paid_amount = $paid_invoices->sum('final_total');
+            $total_extract_amount = $estimates_invoices ? $estimates_invoices->sum('final_total') : 0;
+            $total_paid_amount = $paid_invoices ? $paid_invoices->sum('final_total') : 0;
         }
         
         return view('dashboard', [

@@ -261,10 +261,10 @@
                                                 class="form-label"><?= get_label('status', 'Status') ?></label>
                                             <div class="d-flex align-items-center">
                                                 <select
-                                                    class="form-select form-select-sm select-bg-label-{{ $project->status ? $project->status->color : 'secondary' }}"
+                                                    class="form-select form-select-sm select-bg-label-{{ $project->status && is_object($project->status) ? $project->status->color : 'secondary' }}"
                                                     id="statusSelect" data-id="{{ $project->id }}"
-                                                    data-original-status-id="{{ $project->status ? $project->status->id : '' }}"
-                                                    data-original-color-class="select-bg-label-{{ $project->status ? $project->status->color : 'secondary' }}">
+                                                    data-original-status-id="{{ $project->status && is_object($project->status) ? $project->status->id : '' }}"
+                                                    data-original-color-class="select-bg-label-{{ $project->status && is_object($project->status) ? $project->status->color : 'secondary' }}">
                                                     <option value="" class="badge bg-label-secondary">-</option>
                                                     @foreach ($statuses as $status)
                                                         @php
@@ -272,7 +272,7 @@
                                                         @endphp
                                                         <option value="{{ $status->id }}"
                                                             class="badge bg-label-{{ $status->color }}"
-                                                            {{ $project->status && $project->status->id == $status->id ? 'selected' : '' }}
+                                                            {{ $project->status && is_object($project->status) && $project->status->id == $status->id ? 'selected' : '' }}
                                                             {{ $disabled }}>
                                                             {{ $status->title }}
                                                         </option>
@@ -290,15 +290,15 @@
                                             <label for="prioritySelect"
                                                 class="form-label"><?= get_label('priority', 'Priority') ?></label>
                                             <select
-                                                class="form-select form-select-sm select-bg-label-{{ $project->priority ? $project->priority->color : 'secondary' }}"
+                                                class="form-select form-select-sm select-bg-label-{{ $project->priority && is_object($project->priority) ? $project->priority->color : 'secondary' }}"
                                                 id="prioritySelect" data-id="{{ $project->id }}"
-                                                data-original-priority-id="{{ $project->priority ? $project->priority->id : '' }}"
-                                                data-original-color-class="select-bg-label-{{ $project->priority ? $project->priority->color : 'secondary' }}">
+                                                data-original-priority-id="{{ $project->priority && is_object($project->priority) ? $project->priority->id : '' }}"
+                                                data-original-color-class="select-bg-label-{{ $project->priority && is_object($project->priority) ? $project->priority->color : 'secondary' }}">
                                                 <option value="" class="badge bg-label-secondary">-</option>
                                                 @foreach ($priorities as $priority)
                                                     <option value="{{ $priority->id }}"
                                                         class="badge bg-label-{{ $priority->color }}"
-                                                        {{ $project->priority && $project->priority->id == $priority->id ? 'selected' : '' }}>
+                                                        {{ $project->priority && is_object($project->priority) && $project->priority->id == $priority->id ? 'selected' : '' }}>
                                                         {{ $priority->title }}
                                                     </option>
                                                 @endforeach

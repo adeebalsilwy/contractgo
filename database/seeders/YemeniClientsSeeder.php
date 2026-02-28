@@ -157,7 +157,13 @@ class YemeniClientsSeeder extends Seeder
         ];
 
         foreach ($clients as $clientData) {
-            Client::create($clientData);
+            // Check if client already exists
+            if (!Client::where('email', $clientData['email'])->exists()) {
+                Client::create($clientData);
+                $this->command->info('Created client: ' . $clientData['first_name'] . ' ' . $clientData['last_name']);
+            } else {
+                $this->command->info('Client already exists: ' . $clientData['first_name'] . ' ' . $clientData['last_name']);
+            }
         }
     }
 }

@@ -2336,6 +2336,11 @@ if (!function_exists('getWorkspaceId')) {
                 $workspaceId = session('workspace_id'); // Retrieve workspace_id from session
             } else {
                 $workspaceId = request()->header('workspace_id');
+                // If no workspace_id in session or header, use user's default workspace
+                if (!$workspaceId && $authenticatedUser->default_workspace_id) {
+                    $workspaceId = $authenticatedUser->default_workspace_id;
+                    session(['workspace_id' => $workspaceId]); // Set in session for future requests
+                }
             }
         }
         return $workspaceId;
@@ -3298,6 +3303,132 @@ if (!function_exists('getMenus')) {
                 ],
             ],
             [
+                'id' => 'contracts',
+                'label' => get_label('contracts', 'Contracts'),
+                'url' => url('contracts'),
+                'icon' => 'bx bx-file',
+                'class' => 'menu-item' . (Request::is('contracts') || Request::is('contracts/*') ? ' active open' : ''),
+                'category' => 'contracts_and_extracts',
+                'show' => ($user->can('manage_contracts') || $user->can('manage_contract_types')) ? 1 : 0,
+                'submenus' => [
+                    [
+                        'id' => 'manage_contracts',
+                        'label' => get_label('manage_contracts', 'Manage Contracts'),
+                        'url' => url('contracts'),
+                        'class' => 'menu-item' . (Request::is('contracts') || (Request::is('contracts/*') && !Request::is('contracts/*/favorite') && !Request::is('contracts/favorite') && !Request::is('contracts/bulk-upload')) ? ' active' : ''),
+                        'show' => ($user->can('manage_contracts')) ? 1 : 0
+                    ],
+                    
+                    [
+                        'id' => 'contracts_bulk_upload',
+                        'label' => get_label('bulk_upload', 'Bulk Upload'),
+                        'url' => url('contracts/bulk-upload'),
+                        'class' => 'menu-item' . (Request::is('contracts/bulk-upload') ? ' active' : ''),
+                        'show' => ($user->can('manage_contracts') && $user->can('create_contracts')) ? 1 : 0
+                    ],
+                    [
+                        'id' => 'contract_types',
+                        'label' => get_label('contract_types', 'Contract Types'),
+                        'url' => url('contracts/contract-types'),
+                        'class' => 'menu-item' . (Request::is('contracts/contract-types') ? ' active' : ''),
+                        'show' => ($user->can('manage_contract_types')) ? 1 : 0
+                    ],
+                ],
+            ],
+            [
+                'id' => 'contracts_management',
+                'label' => get_label('contracts_management', 'Contracts Management'),
+                'url' => url('contracts'),
+                'icon' => 'bx bx-file',
+                'class' => 'menu-item' . (Request::is('contracts') || Request::is('contracts/*') || Request::is('contract-quantities') || Request::is('contract-quantities/*') || Request::is('contract-approvals') || Request::is('contract-approvals/*') || Request::is('contract-amendments') || Request::is('contract-amendments/*') ? ' active open' : ''),
+                'category' => 'contracts_and_extracts',
+                'show' => ($user->can('manage_contracts') || $user->can('manage_contract_types')) ? 1 : 0,
+                'submenus' => [
+                    [
+                        'id' => 'manage_contracts_main',
+                        'label' => get_label('manage_contracts', 'Manage Contracts'),
+                        'url' => url('contracts'),
+                        'class' => 'menu-item' . (Request::is('contracts') || (Request::is('contracts/*') && !Request::is('contracts/*/favorite') && !Request::is('contracts/favorite') && !Request::is('contracts/bulk-upload')) ? ' active' : ''),
+                        'show' => ($user->can('manage_contracts')) ? 1 : 0
+                    ],
+                   
+                    [
+                        'id' => 'contracts_bulk_upload_main',
+                        'label' => get_label('bulk_upload', 'Bulk Upload'),
+                        'url' => url('contracts/bulk-upload'),
+                        'class' => 'menu-item' . (Request::is('contracts/bulk-upload') ? ' active' : ''),
+                        'show' => ($user->can('manage_contracts') && $user->can('create_contracts')) ? 1 : 0
+                    ],
+                    [
+                        'id' => 'contract_types_main',
+                        'label' => get_label('contract_types', 'Contract Types'),
+                        'url' => url('contracts/contract-types'),
+                        'class' => 'menu-item' . (Request::is('contracts/contract-types') ? ' active' : ''),
+                        'show' => ($user->can('manage_contract_types')) ? 1 : 0
+                    ],
+                    [
+                        'id' => 'contract_quantities_main',
+                        'label' => get_label('contract_quantities', 'Contract Quantities'),
+                        'url' => url('contract-quantities'),
+                        'class' => 'menu-item' . (Request::is('contract-quantities') || Request::is('contract-quantities/*') ? ' active' : ''),
+                        'show' => $user->can('manage_contracts') ? 1 : 0
+                    ],
+                    [
+                        'id' => 'contract_approvals_main',
+                        'label' => get_label('contract_approvals', 'Contract Approvals'),
+                        'url' => url('contract-approvals'),
+                        'class' => 'menu-item' . (Request::is('contract-approvals') || Request::is('contract-approvals/*') ? ' active' : ''),
+                        'show' => $user->can('manage_contracts') ? 1 : 0
+                    ],
+                    [
+                        'id' => 'contract_amendments_main',
+                        'label' => get_label('contract_amendments', 'Contract Amendments'),
+                        'url' => url('contract-amendments'),
+                        'class' => 'menu-item' . (Request::is('contract-amendments') || Request::is('contract-amendments/*') ? ' active' : ''),
+                        'show' => $user->can('manage_contracts') ? 1 : 0
+                    ],
+                    [
+                        'id' => 'journal_entries_main',
+                        'label' => get_label('journal_entries', 'Journal Entries'),
+                        'url' => url('journal-entries'),
+                        'class' => 'menu-item' . (Request::is('journal-entries') || Request::is('journal-entries/*') ? ' active' : ''),
+                        'show' => $user->can('manage_contracts') ? 1 : 0
+                    ],
+                ],
+            ],
+            [
+                'id' => 'extracts_management',
+                'label' => get_label('extracts_management', 'Extracts Management'),
+                'url' => url('estimates-invoices'),
+                'icon' => 'bx bx-receipt',
+                'class' => 'menu-item' . (Request::is('estimates-invoices') || Request::is('estimates-invoices/*') || Request::is('reports/extract-analytics') ? ' active open' : ''),
+                'category' => 'contracts_and_extracts',
+                'show' => ($user->can('manage_estimates_invoices')) ? 1 : 0,
+                'submenus' => [
+                    [
+                        'id' => 'manage_estimates_invoices_main',
+                        'label' => get_label('manage_estimates_invoices', 'Manage Estimates/Invoices'),
+                        'url' => url('estimates-invoices'),
+                        'class' => 'menu-item' . (Request::is('estimates-invoices') || (Request::is('estimates-invoices/*') && !Request::is('estimates-invoices/*/favorite') && !Request::is('estimates-invoices/favorite')) ? ' active' : ''),
+                        'show' => ($user->can('manage_estimates_invoices')) ? 1 : 0
+                    ],
+                    [
+                        'id' => 'favorite_estimates_invoices_main',
+                        'label' => get_label('favorite_estimates_invoices', 'Favorite Estimates/Invoices'),
+                        'url' => url('estimates-invoices/favorite'),
+                        'class' => 'menu-item' . (Request::is('estimates-invoices/favorite') ? ' active' : ''),
+                        'show' => ($user->can('manage_estimates_invoices')) ? 1 : 0
+                    ],
+                    [
+                        'id' => 'extract_analytics_main',
+                        'label' => get_label('extract_analytics', 'Extract Analytics'),
+                        'url' => url('reports/extract-analytics'),
+                        'class' => 'menu-item' . (Request::is('reports/extract-analytics') ? ' active' : ''),
+                        'show' => $user->can('manage_estimates_invoices') ? 1 : 0
+                    ],
+                ],
+            ],
+            [
                 'id' => 'tasks',
                 'label' => get_label('tasks', 'Tasks'),
                 'url' => url('tasks'),
@@ -3473,59 +3604,8 @@ if (!function_exists('getMenus')) {
                 'show' => $user->can('manage_clients') ? 1 : 0,
                 'category' => 'team',
             ],
-            [
-                'id' => 'contracts',
-                'label' => get_label('contracts', 'Contracts'),
-                'url' => 'javascript:void(0)',
-                'icon' => 'bx bx-news',
-                'class' => 'menu-item' . (Request::is('contracts') || Request::is('contracts/*') ? ' active open' : ''),
-                'show' => ($user->can('manage_contracts') || $user->can('manage_contract_types')) ? 1 : 0,
-                'category' => 'finance',
-                'submenus' => [
-                    [
-                        'id' => 'manage_contracts',
-                        'label' => get_label('manage_contracts', 'Manage contracts'),
-                        'url' => url('contracts'),
-                        'class' => 'menu-item' . (Request::is('contracts') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_types',
-                        'label' => get_label('contract_types', 'Contract types'),
-                        'url' => url('contracts/contract-types'),
-                        'class' => 'menu-item' . (Request::is('contracts/contract-types') ? ' active' : ''),
-                        'show' => $user->can('manage_contract_types') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_quantities',
-                        'label' => get_label('contract_quantities', 'Contract Quantities'),
-                        'url' => url('contract-quantities'),
-                        'class' => 'menu-item' . (Request::is('contract-quantities') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_approvals',
-                        'label' => get_label('contract_approvals', 'Contract Approvals'),
-                        'url' => url('contract-approvals'),
-                        'class' => 'menu-item' . (Request::is('contract-approvals') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'contract_amendments',
-                        'label' => get_label('contract_amendments', 'Contract Amendments'),
-                        'url' => url('contract-amendments'),
-                        'class' => 'menu-item' . (Request::is('contract-amendments') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'journal_entries',
-                        'label' => get_label('journal_entries', 'Journal Entries'),
-                        'url' => url('journal-entries'),
-                        'class' => 'menu-item' . (Request::is('journal-entries') ? ' active' : ''),
-                        'show' => $user->can('manage_contracts') ? 1 : 0
-                    ],
-                ],
-            ],
+           
+           
             [
                 'id' => 'payslips',
                 'label' => get_label('payslips', 'Payslips'),
@@ -3563,7 +3643,7 @@ if (!function_exists('getMenus')) {
                 'label' => get_label('finance', 'Finance'),
                 'url' => 'javascript:void(0)',
                 'icon' => 'bx bx-box',
-                'class' => 'menu-item' . (Request::is('estimates-invoices') || Request::is('estimates-invoices/*') || Request::is('taxes') || Request::is('payment-methods') || Request::is('payments') || Request::is('units') || Request::is('items') || Request::is('expenses') || Request::is('expenses/*') ? ' active open' : ''),
+                'class' => 'menu-item' . (Request::is('taxes') || Request::is('payment-methods') || Request::is('payments') || Request::is('units') || Request::is('items') || Request::is('expenses') || Request::is('expenses/*') ? ' active open' : ''),
                 'show' => ($user->can('manage_estimates_invoices') || $user->can('manage_expenses') || $user->can('manage_payment_methods') ||
                     $user->can('manage_expense_types') || $user->can('manage_payments') || $user->can('manage_taxes') ||
                     $user->can('manage_units') || $user->can('manage_items')) ? 1 : 0,
@@ -3582,13 +3662,6 @@ if (!function_exists('getMenus')) {
                         'url' => url('expenses/expense-types'),
                         'class' => 'menu-item' . (Request::is('expenses/expense-types') ? ' active' : ''),
                         'show' => $user->can('manage_expense_types') ? 1 : 0
-                    ],
-                    [
-                        'id' => 'estimates_invoices',
-                        'label' => get_label('estimates_invoices', 'Estimates/Invoices'),
-                        'url' => url('estimates-invoices'),
-                        'class' => 'menu-item' . (Request::is('estimates-invoices') || Request::is('estimates-invoices/*') ? ' active' : ''),
-                        'show' => $user->can('manage_estimates_invoices') ? 1 : 0
                     ],
                     [
                         'id' => 'payments',
@@ -3632,13 +3705,6 @@ if (!function_exists('getMenus')) {
                         'class' => 'menu-item' . (Request::is('item-pricing') ? ' active' : ''),
                         'show' => $user->can('manage_items') ? 1 : 0
                     ],
-                    [
-                        'id' => 'invoices',
-                        'label' => get_label('invoices', 'Invoices'),
-                        'url' => url('estimates-invoices'),
-                        'class' => 'menu-item' . (Request::is('estimates-invoices') || Request::is('estimates-invoices/*') ? ' active' : ''),
-                        'show' => $user->can('manage_estimates_invoices') ? 1 : 0
-                    ],
                 ],
             ],
             [
@@ -3668,14 +3734,7 @@ if (!function_exists('getMenus')) {
                         'id' => 'estimates_invoices_report',
                         'label' => get_label('estimates_invoices', 'Estimates/Invoices'),
                         'url' => route('reports.invoices-report'),
-                        'class' => 'menu-item' . (Request::is('reports/estimates-invoices') ? ' active' : ''),
-                        'show' => checkPermission('manage_estimates_invoices') ? 1 : 0,
-                    ],
-                    [
-                        'id' => 'extract_analytics',
-                        'label' => get_label('extract_analytics', 'Extract Analytics'),
-                        'url' => route('reports.extract-analytics'),
-                        'class' => 'menu-item' . (Request::is('reports/extract-analytics') ? ' active' : ''),
+                        'class' => 'menu-item' . (Request::is('reports/estimates-invoices') || Request::is('reports/extract-analytics') ? ' active' : ''),
                         'show' => checkPermission('manage_estimates_invoices') ? 1 : 0,
                     ],
                     [

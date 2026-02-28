@@ -166,4 +166,34 @@ class Contract extends Model
     {
         return $this->belongsTo(EstimatesInvoice::class, 'invoice_reference');
     }
+    
+    // Relationship for estimates - directly linked to contract
+    public function estimates()
+    {
+        return $this->hasMany(EstimatesInvoice::class, 'contract_id', 'id')
+                    ->where('type', 'estimate')
+                    ->orderBy('created_at', 'desc');
+    }
+    
+    // Relationship for invoices - directly linked to contract
+    public function invoices()
+    {
+        return $this->hasMany(EstimatesInvoice::class, 'contract_id', 'id')
+                    ->where('type', 'invoice')
+                    ->orderBy('created_at', 'desc');
+    }
+    
+    // Combined relationship for all estimates and invoices related to this contract
+    public function estimatesInvoices()
+    {
+        return $this->hasMany(EstimatesInvoice::class, 'contract_id', 'id')
+                    ->orderBy('created_at', 'desc');
+    }
+    
+    // Relationship specifically for extracts (المسـتـخـلـصـات)
+    public function extracts()
+    {
+        return $this->hasMany(EstimatesInvoice::class, 'contract_id', 'id')
+                    ->orderBy('created_at', 'desc');
+    }
 }

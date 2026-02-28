@@ -1288,7 +1288,7 @@ class TasksController extends Controller
                 $tasksQuery = $tasksQuery->whereIn('tasks.id', $taskIds);
             }
             if (!empty($client_ids)) {
-                $projectIds = DB::table('client_project')->whereIn('client_id', $client_ids)->pluck('project_id')->toArray();
+                $projectIds = DB::table('project_client')->whereIn('client_id', $client_ids)->pluck('project_id')->toArray();
                 $tasksQuery = $tasksQuery->whereIn('project_id', $projectIds);
             }
             if (!empty($project_ids)) {

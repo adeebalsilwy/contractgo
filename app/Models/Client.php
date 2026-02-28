@@ -64,7 +64,7 @@ class Client extends Authenticatable implements MustVerifyEmail
 
     public function projects()
     {
-        return $this->belongsToMany(Project::class)->where('projects.workspace_id', getWorkspaceId());
+        return $this->belongsToMany(Project::class, 'project_client')->where('projects.workspace_id', getWorkspaceId());
     }
 
     public function meetings()
@@ -98,7 +98,7 @@ class Client extends Authenticatable implements MustVerifyEmail
 
     public function status_projects($status_id)
     {
-        return $this->belongsToMany(Project::class, 'client_project')
+        return $this->belongsToMany(Project::class, 'project_client')
             ->where('projects.workspace_id', getWorkspaceId())->where('projects.status_id', $status_id);
     }
     public function status_tasks($status_id)

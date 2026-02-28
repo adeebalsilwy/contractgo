@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             RolesAndPermissionsSeeder::class,
+            // Yemeni general settings first
+            YemeniGeneralSettingsSeeder::class,
             // Yemeni seeders first to establish relationships
             YemeniUsersSeeder::class,
             YemeniClientsSeeder::class,
@@ -42,8 +44,7 @@ class DatabaseSeeder extends Seeder
             ItemPricingSeeder::class,
             ContractQuantitySeeder::class,
             ComprehensiveItemPricingSeeder::class,
-            // Comprehensive Yemeni seeder
-            YemeniComprehensiveSeeder::class,
+            ContractTypePermissionSeeder::class,
         ]);
     }
 }

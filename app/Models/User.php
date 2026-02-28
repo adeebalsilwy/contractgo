@@ -335,4 +335,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(ScheduledEmail::class, 'user_id')->where('workspace_id', getWorkspaceId());
     }
+    
+    public function contractQuantities()
+    {
+        return $this->hasMany(ContractQuantity::class, 'user_id');
+    }
+    
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class, 'created_by');
+    }
 }

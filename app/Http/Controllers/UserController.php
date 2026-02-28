@@ -933,17 +933,20 @@ class UserController extends Controller
         return view('users.user_profile', ['user' => $user, 'projects' => $projects, 'tasks' => $tasks, 'users' => $users, 'clients' => $clients, 'auth_user' => getAuthenticatedUser()]);
     }
 
-    public function list()
+    public function list(Request $request)
     {
         $workspace = Workspace::find(getWorkspaceId());
-        $search = request('search');
-        $sort = request('sort') ?: 'id';
-        $order = request('order') ?: 'DESC';
-        $type = request('type');
-        $typeId = request('typeId');
-        $statuses = request('statuses', []);
-        $role_ids = request('role_ids', []);
-        $ev_statuses = request('ev_statuses', []);
+        $search = $request->input('search');
+        $sort = $request->input('sort', 'id');
+        $order = $request->input('order', 'DESC');
+        $type = $request->input('type');
+        $typeId = $request->input('typeId');
+        $statuses = $request->input('statuses', []);
+        $role_ids = $request->input('role_ids', []);
+        $ev_statuses = $request->input('ev_statuses', []);
+        $page = $request->input('page', 1);
+        $limit = $request->input('limit', 10);
+        $offset = $request->input('offset', 0);
 
         if ($type && $typeId) {
             if ($type == 'project') {
@@ -1007,6 +1010,7 @@ class UserController extends Controller
             });
         }
 
+        // Clone the query to get total count before pagination
         $totalusers = $users->count();
 
         $canEdit = checkPermission('edit_users');
@@ -1023,7 +1027,7 @@ class UserController extends Controller
             ->orderByRaw("CASE WHEN roles.name = 'admin' THEN 0 ELSE 1 END")
             ->orderByRaw("CASE WHEN roles.name = 'admin' THEN users.id END ASC")
             ->orderBy($sort, $order)
-            ->paginate(request("limit"))
+            ->paginate($limit, ['*'], 'page', $page)
             ->through(
                 function ($user) use ($workspace, $canEdit, $canDelete, $canManageProjects, $canManageTasks, $mainAdminId, $guardName, $authUserId) {
                     $actions = '';

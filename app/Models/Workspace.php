@@ -199,4 +199,14 @@ class Workspace extends Model
     {
         return $this->hasMany(EmailTemplate::class);
     }
+    
+    public function contractQuantities()
+    {
+        return $this->hasMany(ContractQuantity::class);
+    }
+    
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class);
+    }
 }

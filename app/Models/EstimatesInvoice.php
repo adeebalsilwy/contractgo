@@ -43,4 +43,9 @@ class EstimatesInvoice extends Model
     {
         return $this->belongsTo(Client::class, 'client_id');
     }
+    
+    public function contract()
+    {
+        return $this->belongsTo(Contract::class, 'contract_id');
+    }
 }

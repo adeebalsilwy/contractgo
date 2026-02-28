@@ -157,6 +157,28 @@ class PriorityController extends Controller
         ]);
     }
 
+    /**
+     * Get all priorities
+     * 
+     * @return array
+     */
+    public function getPriorities()
+    {
+        try {
+            $priorities = Priority::select('id', 'title', 'color')->get()->map(function ($priority) {
+                return [
+                    'id' => $priority->id,
+                    'title' => $priority->title ?? $priority->name ?? 'Untitled',
+                    'color' => $priority->color ?? '#6c757d',
+                ];
+            });
+            return $priorities;
+        } catch (\Exception $e) {
+            \Log::error('Error in getPriorities: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
 
     /**
      * List or search priorities.

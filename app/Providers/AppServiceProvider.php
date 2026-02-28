@@ -140,8 +140,10 @@ class AppServiceProvider extends ServiceProvider
         // Load database configurations and settings
         $this->loadDatabaseSettings();
 
-        // Configure PWA settings
-        $this->configurePwaSettings();
+        // Configure PWA settings if enabled
+        if (config('app.pwa_enabled', true)) {
+            $this->configurePwaSettings();
+        }
 
         // Register PHP date format singleton
         $this->registerDateFormatSingleton();

@@ -26,7 +26,8 @@ class JournalEntry extends Model
         'posted_at',
         'posted_by',
         'posting_notes',
-        'integration_data'
+        'integration_data',
+        'workspace_id'
     ];
 
     protected $casts = [
@@ -55,5 +56,10 @@ class JournalEntry extends Model
     public function postedBy()
     {
         return $this->belongsTo(User::class, 'posted_by');
+    }
+    
+    public function workspace()
+    {
+        return $this->belongsTo(Workspace::class);
     }
 }

@@ -167,7 +167,7 @@ body.standalone-form .form-section {
         var currencySymbol = "{{ $general_settings['currency_symbol'] ?? '' }}";
     </script>
 
-    @laravelPWA
+
 </head>
 
 <body>

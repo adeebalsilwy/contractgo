@@ -12,6 +12,7 @@ class YemeniProfessionalSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            YemeniGeneralSettingsSeeder::class,
             YemeniUsersSeeder::class,
             YemeniClientsSeeder::class,
             YemeniProjectsSeeder::class,

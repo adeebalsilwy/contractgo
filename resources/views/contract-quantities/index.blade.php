@@ -54,26 +54,23 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-striped" id="dataTable">
+                            <table class="table table-striped" id="contract_quantities_table" data-toggle="table" data-url="{{ route('contract-quantities.list') }}" data-query-params="queryParamsContractQuantities" data-pagination="true" data-side-pagination="server" data-page-list="[10, 25, 50, 100]" data-search="false">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th><?= get_label('contract', 'Contract') ?></th>
-                                        <th><?= get_label('item_description', 'Item Description') ?></th>
-                                        <th><?= get_label('requested_quantity', 'Requested Quantity') ?></th>
-                                        <th><?= get_label('approved_quantity', 'Approved Quantity') ?></th>
-                                        <th><?= get_label('unit', 'Unit') ?></th>
-                                        <th><?= get_label('unit_price', 'Unit Price') ?></th>
-                                        <th><?= get_label('total_amount', 'Total Amount') ?></th>
-                                        <th><?= get_label('status', 'Status') ?></th>
-                                        <th><?= get_label('submitted_by', 'Submitted By') ?></th>
-                                        <th><?= get_label('submitted_at', 'Submitted At') ?></th>
-                                        <th><?= get_label('actions', 'Actions') ?></th>
+                                        <th data-field="id" data-sortable="true">ID</th>
+                                        <th data-field="contract" data-sortable="true"><?= get_label('contract', 'Contract') ?></th>
+                                        <th data-field="item_description" data-sortable="true"><?= get_label('item_description', 'Item Description') ?></th>
+                                        <th data-field="requested_quantity" data-sortable="true"><?= get_label('requested_quantity', 'Requested Quantity') ?></th>
+                                        <th data-field="approved_quantity" data-sortable="true"><?= get_label('approved_quantity', 'Approved Quantity') ?></th>
+                                        <th data-field="unit" data-sortable="true"><?= get_label('unit', 'Unit') ?></th>
+                                        <th data-field="unit_price" data-sortable="true"><?= get_label('unit_price', 'Unit Price') ?></th>
+                                        <th data-field="total_amount" data-sortable="true"><?= get_label('total_amount', 'Total Amount') ?></th>
+                                        <th data-field="status" data-sortable="true"><?= get_label('status', 'Status') ?></th>
+                                        <th data-field="submitted_by" data-sortable="true"><?= get_label('submitted_by', 'Submitted By') ?></th>
+                                        <th data-field="submitted_at" data-sortable="true"><?= get_label('submitted_at', 'Submitted At') ?></th>
+                                        <th data-field="actions"><?= get_label('actions', 'Actions') ?></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <!-- Data will be populated by AJAX -->
-                                </tbody>
                             </table>
                         </div>
                     </div>

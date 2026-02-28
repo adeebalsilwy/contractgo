@@ -32,12 +32,8 @@ class ContractQuantitiesController extends Controller
      */
     public function index(Request $request)
     {
-        $contractQuantities = isAdminOrHasAllDataAccess() 
-            ? $this->workspace->contractQuantities() 
-            : $this->user->contractQuantities();
-        
-        $contractQuantities = $contractQuantities->count();
-        return view('contract-quantities.index', ['contractQuantities' => $contractQuantities]);
+        // Return the view - data will be loaded via AJAX
+        return view('contract-quantities.index');
     }
 
     /**

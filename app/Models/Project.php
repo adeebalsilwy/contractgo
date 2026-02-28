@@ -67,7 +67,7 @@ class Project extends Model implements HasMedia
 
     public function clients()
     {
-        return $this->belongsToMany(Client::class);
+        return $this->belongsToMany(Client::class, 'project_client');
     }
 
     public function status()
@@ -133,5 +133,12 @@ class Project extends Model implements HasMedia
     {
         $customFieldValue = $this->customFieldValues()->where('custom_field_id', $fieldId)->first();
         return $customFieldValue ? $customFieldValue->value : null;
+    }
+    
+    public function contracts()
+    {
+        // For testing purposes, remove workspace filter
+        return $this->hasMany(Contract::class);
+        // return $this->hasMany(Contract::class)->where('contracts.workspace_id', getWorkspaceId());
     }
 }

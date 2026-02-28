@@ -151,6 +151,9 @@ class YemeniContractsSeeder extends Seeder
         ];
 
         foreach ($contracts as $index => $contractData) {
+            // Get random user for created_by field
+            $createdByUser = $users->random();
+            
             Contract::create([
                 'title' => $contractData['title'],
                 'value' => $contractData['value'],
@@ -159,6 +162,7 @@ class YemeniContractsSeeder extends Seeder
                 'client_id' => $clients->random()->id,
                 'project_id' => $projects->random()->id,
                 'workspace_id' => 1,
+                'created_by' => $createdByUser->id,
 
                 'contract_type_id' => $contractTypes->random()->id,
                 'description' => $contractData['description'],

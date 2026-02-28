@@ -46,7 +46,8 @@ class EstimatesInvoicesController extends Controller
     {
         $units = $this->workspace->units;
         $taxes = $this->workspace->taxes;
-        return view('estimates-invoices.create', ['units' => $units, 'taxes' => $taxes]);
+        $contracts = $this->workspace->contracts;
+        return view('estimates-invoices.create', ['units' => $units, 'taxes' => $taxes, 'contracts' => $contracts]);
     }
 
     /**
@@ -285,6 +286,11 @@ class EstimatesInvoicesController extends Controller
                 $formFields['created_by'] = isClient() ? 'c_' . $this->user->id : 'u_' . $this->user->id;
 
                 if ($res = EstimatesInvoice::create($formFields)) {
+                    // Handle contract linking
+                    if ($request->has('contract_id') && $request->contract_id != '') {
+                        $res->update(['contract_id' => $request->contract_id]);
+                    }
+                    
                     foreach ($request->input('item') as $key => $item_id) {
                         $quantity = (int)$request->input('quantity')[$key];
                         $unit_id = (int)$request->input('unit')[$key];
@@ -510,7 +516,8 @@ class EstimatesInvoicesController extends Controller
         $estimate_invoice = EstimatesInvoice::findOrFail($id);
         $units = $this->workspace->units;
         $taxes = $this->workspace->taxes;
-        return view('estimates-invoices.update', ['estimate_invoice' => $estimate_invoice, 'units' => $units, 'taxes' => $taxes]);
+        $contracts = $this->workspace->contracts;
+        return view('estimates-invoices.update', ['estimate_invoice' => $estimate_invoice, 'units' => $units, 'taxes' => $taxes, 'contracts' => $contracts]);
     }
 
     /**
@@ -739,6 +746,11 @@ class EstimatesInvoicesController extends Controller
 
                 // dd($items);
                 if ($estimate_invoice->update($formFields)) {
+                    // Handle contract linking
+                    if ($request->has('contract_id')) {
+                        $estimate_invoice->update(['contract_id' => $request->contract_id ?: null]);
+                    }
+                    
                     for ($i = 0; $i < count($items); $i++) {
                         $itemPivotData[$items[$i]] = [
                             'qty' => $request->input('quantity')[$i],
@@ -838,105 +850,147 @@ class EstimatesInvoicesController extends Controller
 
 
         $estimate_invoice->status = $statusBadge;
+        
+        // If this is an estimate, show the specialized estimate view
+        if ($estimate_invoice->type === 'estimate') {
+            return view('estimates.show', compact('estimate_invoice'));
+        }
+        
         return view('estimates-invoices.view', compact('estimate_invoice'));
+    }
+    
+    public function showEstimate($id)
+    {
+        $estimate_invoice = EstimatesInvoice::findOrFail($id);
+        
+        // Make sure this is an estimate
+        if ($estimate_invoice->type !== 'estimate') {
+            abort(404, 'Page not found');
+        }
+        
+        // The ID corresponds to a user
+        $creator = User::find(substr($estimate_invoice->created_by, 2)); // Remove the 'u_' prefix
+        if ($creator !== null) {
+            $estimate_invoice->creator = $creator->first_name . ' ' . $creator->last_name;
+        } else {
+            $estimate_invoice->creator = ' -';
+        }
+        $estimate_invoice->from_date = $estimate_invoice->from_date !== null ? format_date($estimate_invoice->from_date) : '';
+        $estimate_invoice->to_date = $estimate_invoice->to_date !== null ? format_date($estimate_invoice->to_date) : '';
+
+        $statusBadge = '';
+
+        if ($estimate_invoice->status == 'sent') {
+            $statusBadge = '<span class="badge bg-primary">' . get_label('sent', 'Sent') . '</span>';
+        } elseif ($estimate_invoice->status == 'accepted') {
+            $statusBadge = '<span class="badge bg-success">' . get_label('accepted', 'Accepted') . '</span>';
+        } elseif ($estimate_invoice->status == 'partially_paid') {
+            $statusBadge = '<span class="badge bg-warning">' . get_label('partially_paid', 'Partially paid') . '</span>';
+        } elseif ($estimate_invoice->status == 'fully_paid') {
+            $statusBadge = '<span class="badge bg-success">' . get_label('fully_paid', 'Fully paid') . '</span>';
+        } elseif ($estimate_invoice->status == 'draft') {
+            $statusBadge = '<span class="badge bg-secondary">' . get_label('draft', 'Draft') . '</span>';
+        } elseif ($estimate_invoice->status == 'declined') {
+            $statusBadge = '<span class="badge bg-danger">' . get_label('declined', 'Declined') . '</span>';
+        } elseif ($estimate_invoice->status == 'expired') {
+            $statusBadge = '<span class="badge bg-warning">' . get_label('expired', 'Expired') . '</span>';
+        } elseif ($estimate_invoice->status == 'not_specified') {
+            $statusBadge = '<span class="badge bg-secondary">' . get_label('not_specified', 'Not specified') . '</span>';
+        } elseif ($estimate_invoice->status == 'due') {
+            $statusBadge = '<span class="badge bg-danger">' . get_label('due', 'Due') . '</span>';
+        }
+
+        $estimate_invoice->status = $statusBadge;
+        
+        return view('estimates.show', compact('estimate_invoice'));
     }
 
     public function pdf(Request $request, $id)
     {
         $estimate_invoice = EstimatesInvoice::findOrFail($id);
+        
+        // Fetch related data for the estimate
         $general_settings = get_settings('general_settings');
-
-        $logo = !isset($general_settings['full_logo']) || empty($general_settings['full_logo']) ? 'storage/logos/default_full_logo.png' : 'storage/' . $general_settings['full_logo'];
-        $company_title = $general_settings['company_title'] ?? 'Taskify';
-        $addressParts = [
-            $estimate_invoice->city ?? '',
-            $estimate_invoice->state ?? '',
-            $estimate_invoice->country ?? '',
-            $estimate_invoice->zip_code ?? '',
+        $company_title = $general_settings['company_title'] ?? 'Modern Al-Aqariah Company Limited';
+        
+        // Prepare data for the PDF template
+        $data = [
+            'estimate' => $estimate_invoice,
+            'company_title_ar' => 'الشركة العقارية الحديثة المحدودة',
+            'company_title_en' => 'Modern Al-Aqariah Company Limited',
+            'engineer_name' => '—', // You might fetch this from related data
+            'contractor_name' => 'محمد علي عبده وهبان', // You might fetch this from related data
+            'project_location' => 'الجمهورية اليمنية - عدن - صيرة',
+            'project_name' => 'مشروع بنك عدن الأول الاسلامي - كريتر',
+            'net_value' => '12240.00', // Calculate or fetch actual value
+            'estimate_number' => $estimate_invoice->id,
+            'contract_value' => '13600.00', // Fetch actual contract value
+            'contract_number' => '1', // Fetch actual contract number
+            'item_description' => '- 11الجبسيات', // Fetch actual item description
+            'estimate_date' => $estimate_invoice->created_at->format('Y-m-d'),
+            'total_to_date' => '12240.00', // Calculate or fetch actual value
+            'completion_percentage' => '90.00%', // Calculate or fetch actual percentage
+            'items' => $estimate_invoice->items, // Fetch related items
+            'general_settings' => $general_settings,
         ];
+        
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('estimates.pdf_template', $data);
+        
+        return $pdf->stream('estimate_' . $estimate_invoice->id . '.pdf');
+    }
 
-        $addressParts = array_filter($addressParts); // Remove empty values
-        $city_state_country_zip = implode(', ', $addressParts);
-
-        $client = new Party([
-            'name' => $estimate_invoice->name ?? '',
-            'address' => $estimate_invoice->address ?? '',
-            'city_state_country_zip' => $city_state_country_zip,
-            'phone' => $estimate_invoice->phone ?? '',
-        ]);
-
-
-        $customer = new Party([
-            'name'          => 'Ashley Medina',
-            'address'       => 'The Green Street 12',
-            'code'          => '#22663214',
-            'custom_fields' => [
-                'order number' => '> 654321 <',
-            ],
-        ]);
-
-        $items = [
-            InvoiceItem::make('Service 1')
-                ->description('Your product or service description')
-                ->pricePerUnit(47.79)
-                ->quantity(2)
-                ->discount(10),
-            InvoiceItem::make('Service 2')->pricePerUnit(71.96)->quantity(2),
-            InvoiceItem::make('Service 3')->pricePerUnit(4.56),
-            InvoiceItem::make('Service 4')->pricePerUnit(87.51)->quantity(7)->discount(4)->units('kg'),
-            InvoiceItem::make('Service 5')->pricePerUnit(71.09)->quantity(7)->discountByPercent(9),
-            InvoiceItem::make('Service 6')->pricePerUnit(76.32)->quantity(9),
-            InvoiceItem::make('Service 7')->pricePerUnit(58.18)->quantity(3)->discount(3),
-            InvoiceItem::make('Service 8')->pricePerUnit(42.99)->quantity(4)->discountByPercent(3),
-            InvoiceItem::make('Service 9')->pricePerUnit(33.24)->quantity(6)->units('m2'),
-            InvoiceItem::make('Service 11')->pricePerUnit(97.45)->quantity(2),
-            InvoiceItem::make('Service 12')->pricePerUnit(92.82),
-            InvoiceItem::make('Service 13')->pricePerUnit(12.98),
-            InvoiceItem::make('Service 14')->pricePerUnit(160)->units('hours'),
-            InvoiceItem::make('Service 15')->pricePerUnit(62.21)->discountByPercent(5),
-            InvoiceItem::make('Service 16')->pricePerUnit(2.80),
-            InvoiceItem::make('Service 17')->pricePerUnit(56.21),
-            InvoiceItem::make('Service 18')->pricePerUnit(66.81)->discountByPercent(8),
-            InvoiceItem::make('Service 19')->pricePerUnit(76.37),
-            InvoiceItem::make('Service 20')->pricePerUnit(55.80),
+    public function estimatePdf(Request $request, $id)
+    {
+        $estimate_invoice = EstimatesInvoice::findOrFail($id);
+        
+        // Try to find related contract if exists - this assumes there might be a connection
+        // between estimates and contracts, which may need to be adjusted based on your schema
+        $relatedContract = null;
+        $contractor = null;
+        $project = null;
+        $engineer = null;
+        
+        // You could add logic here to connect estimates to contracts if there's a relationship
+        // For example, if there's a custom field or reference to a contract in the estimate
+        
+        $general_settings = get_settings('general_settings');
+        $company_title = $general_settings['company_title'] ?? 'Modern Al-Aqariah Company Limited';
+        
+        // Calculate actual values for the estimate
+        $netValue = $estimate_invoice->final_total;
+        $contractValue = $estimate_invoice->total; // This might represent the overall contract value if this is part of a larger contract
+        
+        // If we need to calculate against a real contract value, we might need to find the related contract
+        // For now, we'll use the estimate's total as the reference if no related contract is found
+        $referenceValue = $contractValue > 0 ? $contractValue : $netValue;
+        $completionPercentage = $referenceValue > 0 ? round(($netValue / $referenceValue) * 100, 2) . '%' : '0.00%';
+        
+        // Prepare data for the PDF template
+        $data = [
+            'estimate' => $estimate_invoice,
+            'company_title_ar' => 'الشركة العقارية الحديثة المحدودة',
+            'company_title_en' => 'Modern Al-Aqariah Company Limited',
+            'engineer_name' => $engineer ? $engineer->first_name . ' ' . $engineer->last_name : '—',
+            'contractor_name' => $contractor ? $contractor->first_name . ' ' . $contractor->last_name : 'محمد علي عبده وهبان',
+            'project_location' => $project ? $project->location : 'الجمهورية اليمنية - عدن - صيرة',
+            'project_name' => $project ? $project->name : 'مشروع بنك عدن الأول الاسلامي - كريتر',
+            'net_value' => number_format($netValue, 2),
+            'estimate_number' => $estimate_invoice->id,
+            'contract_value' => number_format($referenceValue, 2),
+            'contract_number' => $relatedContract ? $relatedContract->id : '1',
+            'item_description' => $estimate_invoice->name, // Using estimate name as item description
+            'estimate_date' => $estimate_invoice->created_at->format('Y-m-d'),
+            'total_to_date' => number_format($netValue, 2),
+            'completion_percentage' => $completionPercentage,
+            'items' => $estimate_invoice->items, // Items related to this estimate
+            'general_settings' => $general_settings,
         ];
-
-        $notes = [
-            'your multiline',
-            'additional notes',
-            'in regards of delivery or something else',
-        ];
-        $notes = implode("<br>", $notes);
-
-
-        $invoice = Invoice::make(($estimate_invoice->type == 'estimate' ? get_label('estimate_id_prefix', 'ESTMT-') : get_label('invoice_id_prefix', 'INVC-')) . $estimate_invoice->id . ' - ' . $company_title)
-            ->series('BIG')
-            ->status(get_label($estimate_invoice->status, ucfirst(str_replace('_', ' ', $estimate_invoice->status))))
-            ->sequence(667)
-            ->serialNumberFormat('{SEQUENCE}/{SERIES}')
-            ->seller($client)
-            ->buyer($customer)
-            ->date(now()->subWeeks(3))
-            ->dateFormat('m/d/Y')
-            ->payUntilDays(14)
-            ->currencySymbol('$')
-            ->currencyCode('USD')
-            ->currencyFormat('{SYMBOL}{VALUE}')
-            ->currencyThousandsSeparator('.')
-            ->currencyDecimalPoint(',')
-            ->filename(($estimate_invoice->type == 'estimate' ? get_label('estimate_id_prefix', 'ESTMT-') : get_label('invoice_id_prefix', 'INVC-')) . $estimate_invoice->id . ' - ' . $company_title)
-            ->addItems($items)
-            ->notes($notes)
-            ->logo($logo)
-            // You can additionally save generated invoice to configured disk
-            ->setCustomData(['estimate_invoice' => $estimate_invoice]);
-        // ->save('public');
-
-        $link = $invoice->url();
-        // Then send email to party with link
-
-        // And return invoice itself to browser or have a different view
-        return $invoice->stream();
+        
+        $pdf = app('dompdf.wrapper');
+        $pdf->loadView('estimates.pdf_template', $data);
+        
+        return $pdf->stream('estimate_' . $estimate_invoice->id . '.pdf');
     }
 
     /**

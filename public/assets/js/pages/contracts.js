@@ -36,8 +36,25 @@ function loadingTemplate(message) {
 
 function idFormatter(value, row, index) {
     return [
-        '<a href="' + baseUrl + '/contracts/sign/' + row.id + '">' + label_contract_id_prefix + row.id + '</a>'
+        '<a href="' + baseUrl + '/contracts/' + row.id + '" title="' + label_view_details + '">' + label_contract_id_prefix + row.id + '</a>'
     ]
+}
+
+function actionsFormatter(value, row, index) {
+    let actions = [
+        '<a href="' + baseUrl + '/contracts/' + row.id + '" class="btn btn-sm btn-info" title="' + label_view_details + '"><i class="bx bx-show"></i></a>',
+        '<a href="' + baseUrl + '/contracts/mind-map/' + row.id + '" class="btn btn-sm btn-primary mx-1" title="' + label_mind_map + '"><i class="bx bx-sitemap"></i></a>'
+    ];
+    
+    if (row.can_edit) {
+        actions.push('<a href="javascript:void(0);" class="edit-contract btn btn-sm btn-warning mx-1" data-bs-toggle="modal" data-bs-target="#edit_contract_modal" data-id="' + row.id + '" title="' + label_update + '"><i class="bx bx-edit"></i></a>');
+    }
+    
+    if (row.can_delete) {
+        actions.push('<button title="' + label_delete + '" type="button" class="btn btn-sm btn-danger delete" data-id="' + row.id + '" data-type="contracts" data-table="contracts_table"><i class="bx bx-trash"></i></button>');
+    }
+    
+    return actions.join('');
 }
 if ($('#promisor_sign').length) {
     var canvas = document.getElementById('promisor_sign');

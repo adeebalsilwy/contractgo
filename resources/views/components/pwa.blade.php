@@ -1,5 +1,5 @@
-
 {{-- @dd($config); --}}
+@if(config('app.pwa_enabled', true))
 <!-- Web Application Manifest -->
 <link rel="manifest" href="{{ route('laravelpwa.manifest') }}">
 <!-- Chrome for Android theme color -->
@@ -46,3 +46,21 @@
         });
     }
 </script>
+@else
+<!-- Unregister service worker if PWA is disabled -->
+<script type="text/javascript">
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+                if (registration.active && registration.active.scriptURL.includes('serviceworker.js')) {
+                    registration.unregister().then(function(success) {
+                        if (success) {
+                            console.log('Laravel PWA: ServiceWorker unregistered as PWA is disabled');
+                        }
+                    });
+                }
+            }
+        });
+    }
+</script>
+@endif

@@ -220,6 +220,19 @@
                                     <h6 class="border-bottom pb-2"><?= get_label('additional_settings', 'Additional Settings') ?></h6>
                                 </div>
                                 
+                                <div class="col-md-12 mb-3">
+                                    <label for="extracts" class="form-label"><?= get_label('link_existing_extracts', 'Link Existing Extracts') ?></label>
+                                    <select class="form-select" id="extracts" name="extracts[]" multiple>
+                                        <option value=""><?= get_label('select_extracts_to_link', 'Select extracts to link to this contract') ?></option>
+                                        @foreach($extracts as $extract)
+                                            <option value="{{ $extract->id }}" {{ in_array($extract->id, old('extracts', [])) ? 'selected' : '' }}>
+                                                {{ $extract->name }} ({{ ucfirst($extract->type) }}) - {{ format_currency($extract->final_total) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text"><?= get_label('extracts_link_help', 'Select existing extracts that should be linked to this contract. You can also create new extracts after contract creation.') ?></div>
+                                </div>
+                                
                                 <div class="col-md-6 mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="auto_start_workflow" name="auto_start_workflow" value="1" {{ old('auto_start_workflow') ? 'checked' : '' }}>

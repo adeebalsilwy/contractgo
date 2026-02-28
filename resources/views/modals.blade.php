@@ -6249,14 +6249,18 @@
 
                     <div class="col-md-6">
                         <label for="status" class="form-label">{{ get_label('status', 'Status') }}</label>
-
                         @if (isset($statuses) && $statuses->isNotEmpty())
-                            <select name="status_id" class="form-select" required>
+                            <select name="status_id" class="form-select" id="candidateStatusId" required>
                                 <option value="">{{ get_label('select_status', 'Select Status') }}</option>
                                 @foreach ($statuses as $status)
-                                    <option class="badge bg-label-{{ $status->color }}"
-                                        value="{{ $status->id }}">
-                                        {{ ucfirst($status->name) }}
+                                    @php
+                                        $color = is_object($status) ? $status->color : (is_array($status) ? ($status['color'] ?? '') : '');
+                                        $id = is_object($status) ? $status->id : (is_array($status) ? ($status['id'] ?? '') : '');
+                                        $name = is_object($status) ? $status->name : (is_array($status) ? ($status['name'] ?? '') : '');
+                                    @endphp
+                                    <option class="badge bg-label-{{ $color }}"
+                                        value="{{ $id }}">
+                                        {{ ucfirst($name) }}
                                     </option>
                                 @endforeach
                             </select>
@@ -6349,9 +6353,14 @@
                             <select name="status_id" class="form-select" id="candidateStatusId" required>
                                 <option value="">{{ get_label('select_status', 'Select Status') }}</option>
                                 @foreach ($statuses as $status)
-                                    <option class="badge bg-label-{{ $status->color }}"
-                                        value="{{ $status->id }}">
-                                        {{ ucfirst($status->name) }}
+                                    @php
+                                        $color = is_object($status) ? $status->color : (is_array($status) ? ($status['color'] ?? '') : '');
+                                        $id = is_object($status) ? $status->id : (is_array($status) ? ($status['id'] ?? '') : '');
+                                        $name = is_object($status) ? $status->name : (is_array($status) ? ($status['name'] ?? '') : '');
+                                    @endphp
+                                    <option class="badge bg-label-{{ $color }}"
+                                        value="{{ $id }}">
+                                        {{ ucfirst($name) }}
                                     </option>
                                 @endforeach
                             </select>
@@ -6756,7 +6765,7 @@
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="d-flex align-items-center gap-4">
-                            <img id="candidate-avatar" src="{{ asset('/photos/default-avatar.png') }}"
+                            <img id="candidate-avatar" src="{{ asset('storage/photos/no-image.jpg') }}"
                                 alt="candidate-avatar" class="rounded" height="100" width="100" />
                             <div>
                                 <h4 class="card-title fw-bold" id="candidate-name"></h4>

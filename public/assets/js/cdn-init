@@ -1,0 +1,9 @@
+<?php
+// TinyMCE CDN initialization endpoint
+// This is a dummy endpoint to handle TinyMCE's cloud service initialization requests
+http_response_code(200);
+header('Content-Type: application/json');
+echo json_encode([
+    'status' => 'success',
+    'message' => 'CDN initialization endpoint'
+]);

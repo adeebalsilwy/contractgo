@@ -250,6 +250,22 @@
                                     <h6 class="border-bottom pb-2"><?= get_label('additional_settings', 'Additional Settings') ?></h6>
                                 </div>
                                 
+                                <div class="col-md-12 mb-3">
+                                    <label for="extracts" class="form-label"><?= get_label('manage_linked_extracts', 'Manage Linked Extracts') ?></label>
+                                    <select class="form-select" id="extracts" name="extracts[]" multiple>
+                                        <option value=""><?= get_label('select_extracts_to_link', 'Select extracts to link to this contract') ?></option>
+                                        @foreach($extracts as $extract)
+                                            <option value="{{ $extract->id }}" {{ in_array($extract->id, old('extracts', $contract->estimates->pluck('id')->toArray())) ? 'selected' : '' }}>
+                                                {{ $extract->name }} ({{ ucfirst($extract->type) }}) - {{ format_currency($extract->final_total) }}
+                                                @if($extract->contract_id == $contract->id)
+                                                    [<?= get_label('currently_linked', 'Currently Linked') ?>]
+                                                @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text"><?= get_label('extracts_link_help', 'Select extracts to link to this contract. Currently linked extracts are marked. You can unlink extracts by removing them from selection.') ?></div>
+                                </div>
+                                
                                 <div class="col-md-6 mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="is_archived" name="is_archived" value="1" {{ old('is_archived', $contract->is_archived) ? 'checked' : '' }}>

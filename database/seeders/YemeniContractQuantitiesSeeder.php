@@ -123,8 +123,9 @@ class YemeniContractQuantitiesSeeder extends Seeder
         ];
 
         foreach ($quantities as $quantityData) {
+            $randomContract = $contracts->random();
             ContractQuantity::create([
-                'contract_id' => $contracts->random()->id,
+                'contract_id' => $randomContract->id,
                 'user_id' => $users->random()->id,
                 'item_description' => $quantityData['item_description'],
                 'requested_quantity' => $quantityData['requested_quantity'],
@@ -135,6 +136,7 @@ class YemeniContractQuantitiesSeeder extends Seeder
                 'status' => $quantityData['status'],
                 'notes' => $quantityData['notes'],
                 'submitted_at' => now()->subDays(rand(1, 30)),
+                'workspace_id' => $randomContract->workspace_id, // Use the same workspace as the contract
             ]);
         }
     }

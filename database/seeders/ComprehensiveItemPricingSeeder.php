@@ -447,9 +447,17 @@ class ComprehensiveItemPricingSeeder extends Seeder
     {
         $this->command->info('Seeding contract quantity records...');
         
+        $workspace = \App\Models\Workspace::first();
+        
+        if (!$workspace) {
+            $this->command->info('No workspace found. Skipping contract quantities seeding.');
+            return;
+        }
+        
         $quantityRecords = [
             // Residential Building - Concrete
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->first()->id,
                 'user_id' => $users->first()->id,
                 'item_description' => $items->first()?->title ?? 'Default Item', // Premium Concrete Mix
@@ -469,6 +477,7 @@ class ComprehensiveItemPricingSeeder extends Seeder
             ],
             // Residential Building - Steel Rebar
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->first()->id,
                 'user_id' => $users->first()->id,
                 'item_description' => $items->skip(1)->first()?->title ?? $items->first()?->title ?? 'Default Item', // Steel Rebar
@@ -488,6 +497,7 @@ class ComprehensiveItemPricingSeeder extends Seeder
             ],
             // Office Renovation - Paint
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->skip(1)->first()->id,
                 'user_id' => $users->skip(1)->first()->id,
                 'item_description' => $items->skip(5)->first()?->title ?? $items->first()?->title ?? 'Default Item', // Paint Gallons
@@ -507,6 +517,7 @@ class ComprehensiveItemPricingSeeder extends Seeder
             ],
             // Road Project - Insulation
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->skip(2)->first()->id,
                 'user_id' => $users->skip(2)->first()->id,
                 'item_description' => $items->skip(6)->first()?->title ?? $items->first()?->title ?? 'Default Item', // Insulation Material
@@ -526,6 +537,7 @@ class ComprehensiveItemPricingSeeder extends Seeder
             ],
             // Road Project - PVC Pipes
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->skip(2)->first()->id,
                 'user_id' => $users->first()->id,
                 'item_description' => $items->skip(7)->first()?->title ?? $items->first()?->title ?? 'Default Item', // PVC Pipes
@@ -545,6 +557,7 @@ class ComprehensiveItemPricingSeeder extends Seeder
             ],
             // Previous pricing example - rejected
             [
+                'workspace_id' => $workspace->id,
                 'contract_id' => $contracts->skip(1)->first()->id,
                 'user_id' => $users->skip(1)->first()->id,
                 'item_description' => $items->skip(2)->first()?->title ?? $items->first()?->title ?? 'Default Item', // Electrical Wiring

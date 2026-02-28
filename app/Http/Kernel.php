@@ -40,6 +40,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\Language::class,
+            \App\Http\Middleware\AutoWorkspaceAssignment::class,
         ],
 
         'api' => [
@@ -84,5 +85,6 @@ class Kernel extends HttpKernel
         'isApi' => \App\Http\Middleware\IsApi::class,
         'validate.upload.media' => \App\Http\Middleware\ValidateUploadMedia::class,
         'system.check' => \App\Http\Middleware\SystemIntegrity::class,
+        'auto.workspace.assignment' => \App\Http\Middleware\AutoWorkspaceAssignment::class,
     ];
 }

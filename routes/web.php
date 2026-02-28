@@ -59,6 +59,7 @@ use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\CustomFieldController;
 use App\Http\Controllers\PwaManifestController;
 use App\Http\Controllers\PwaSettingsController;
+use LaravelPWA\Http\Controllers\LaravelPWAController;
 use App\Http\Controllers\TimeTrackerController;
 use App\Http\Controllers\LeadFollowUpController;
 use App\Http\Controllers\LeaveRequestController;
@@ -71,6 +72,12 @@ use App\Http\Controllers\PaymentMethodsController;
 use App\Http\Controllers\CandidateStatusController;
 use App\Http\Controllers\PluginInstallerController;
 use App\Http\Controllers\EstimatesInvoicesController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContractQuantitiesController;
+use App\Http\Controllers\ContractApprovalsController;
+use App\Http\Controllers\ContractAmendmentsController;
+use App\Http\Controllers\JournalEntriesController;
+use App\Http\Controllers\ItemPricingController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use Spatie\Permission\Middlewares\PermissionMiddleware;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -145,6 +152,26 @@ Route::post('/installer/config-db', [InstallerController::class, 'config_db'])->
 Route::post('/installer/install', [InstallerController::class, 'install'])->middleware('guest')->name('installer.install');
 
 Route::get('/meetings/join/web-view/{id}', [MeetingsController::class, 'joinWebView']);
+
+// PWA Routes
+Route::group(['as' => 'laravelpwa.'], function()
+{
+    Route::get('/manifest.json', [LaravelPWAController::class, 'manifestJson'])
+    ->name('manifest');
+    Route::get('/offline/', [LaravelPWAController::class, 'offline']);
+});
+
+// Chat routes
+Route::prefix('chat')->group(function () {
+    Route::get('/', [ChatController::class, 'index'])->name('chat.index');
+    Route::post('/favorites', [ChatController::class, 'favorites'])->name('chat.favorites');
+    Route::get('/getContacts', [ChatController::class, 'getContacts'])->name('chat.getContacts');
+    Route::post('/idInfo', [ChatController::class, 'idInfo'])->name('chat.idInfo');
+    Route::post('/fetchMessages', [ChatController::class, 'fetchMessages'])->name('chat.fetchMessages');
+    Route::post('/updateContacts', [ChatController::class, 'updateContacts'])->name('chat.updateContacts');
+    Route::get('/search', [ChatController::class, 'search'])->name('chat.search');
+    Route::post('/shared', [ChatController::class, 'shared'])->name('chat.shared');
+});
 
 
 
@@ -694,6 +721,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
 
             Route::get('/settings/company-info', [SettingsController::class, 'companyInfo']);
 
+        // Cache Management Page
+        Route::get('/admin/cache-management', [App\Http\Controllers\CacheManagementController::class, 'index'])->middleware(['customRole:admin'])->name('admin.cache.management');
+
             Route::put('/settings/store_company_info', [SettingsController::class, 'store_company_info'])->middleware(['demo_restriction']);
 
             Route::get('/settings/google-calendar', [SettingsController::class, 'google_calendar'])->name('google_calendar.index');
@@ -762,11 +792,13 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/contracts/store', [ContractsController::class, 'store'])->middleware(['customcan:create_contracts', 'log.activity']);
                 Route::get('/contracts/list', [ContractsController::class, 'list']);
                 Route::get('/contracts/{id}', [ContractsController::class, 'show'])->name('contracts.show')->middleware(['checkAccess:App\Models\Contract,contracts,id']);
+                Route::get('/contracts/{id}/pdf', [ContractsController::class, 'generatePdf'])->name('contracts.pdf')->middleware(['checkAccess:App\Models\Contract,contracts,id']);
+                Route::get('/contracts/mind-map/{id}', [ContractsController::class, 'mind_map'])->name('contracts.mind_map');
                 Route::get('/contracts/get/{id}', [ContractsController::class, 'get'])->middleware(['checkAccess:App\Models\Contract,contracts,id']);
                 Route::post('/contracts/update', [ContractsController::class, 'update'])->middleware(['customcan:edit_contracts', 'log.activity']);
-                Route::get('/contracts/sign/{id}', [ContractsController::class, 'sign'])->middleware(['checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
+                Route::get('/contracts/sign/{id}', [ContractsController::class, 'sign'])->name('contracts.sign')->middleware(['checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
                 Route::post('/contracts/create-sign', [ContractsController::class, 'create_sign'])->middleware('log.activity');
-                Route::get('/contracts/duplicate/{id}', [ContractsController::class, 'duplicate'])->middleware(['customcan:create_contracts', 'checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
+                Route::get('/contracts/duplicate/{id}', [ContractsController::class, 'duplicate'])->name('contracts.duplicate')->middleware(['customcan:create_contracts', 'checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
                 Route::delete('/contracts/destroy/{id}', [ContractsController::class, 'destroy'])->middleware(['customcan:delete_contracts', 'demo_restriction', 'checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
                 Route::post('/contracts/destroy_multiple', [ContractsController::class, 'destroy_multiple'])->middleware(['customcan:delete_contracts', 'demo_restriction', 'log.activity']);
                 Route::delete('/contracts/delete-sign/{id}', [ContractsController::class, 'delete_sign'])->middleware('log.activity');
@@ -775,18 +807,37 @@ Route::middleware(['CheckInstallation'])->group(function () {
             Route::middleware(['customcan:manage_contracts'])->group(function () {
                 // Amendment routes
                 Route::resource('/contract-amendments', ContractAmendmentsController::class);
-                Route::get('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'create'])->name('contract-amendments.create');
-                Route::post('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'store'])->name('contract-amendments.store');
+                Route::get('/contract-amendments/list', [ContractAmendmentsController::class, 'list'])->name('contract-amendments.list');
+                Route::get('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'create'])->name('contracts.request-amendment');
+                Route::post('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'store'])->name('contracts.store-amendment');
                 Route::post('/contract-amendments/{id}/sign', [ContractAmendmentsController::class, 'sign'])->name('contract-amendments.sign');
             });
             
             // Contract Quantities routes
             Route::middleware(['customcan:manage_contracts'])->group(function () {
-                Route::resource('/contract-quantities', ContractQuantitiesController::class);
-                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.create');
+                Route::get('/contract-quantities/list', [ContractQuantitiesController::class, 'list'])->name('contract-quantities.list');
+                Route::post('/contract-quantities/store', [ContractQuantitiesController::class, 'store'])->name('contract-quantities.store');
+                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.show');
                 Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.edit');
                 Route::put('/contract-quantities/{id}', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.update');
-                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.show');
+                Route::delete('/contract-quantities/{id}', [ContractQuantitiesController::class, 'destroy'])->name('contract-quantities.destroy');
+                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.create');
+                Route::get('/contract-quantities/contract/{contractId}/upload', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
+                Route::post('/contract-quantities/contract/{contractId}/bulk-upload', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
+                Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
+                Route::post('/contract-quantities/{id}/reject', [ContractQuantitiesController::class, 'rejectQuantity'])->name('contract-quantities.reject');
+                Route::put('/contract-quantities/{id}/modify', [ContractQuantitiesController::class, 'modifyQuantity'])->name('contract-quantities.modify');
+                Route::get('/contract-quantities/pending-approval', [ContractQuantitiesController::class, 'pendingForApproval'])->name('contract-quantities.pending-approval');
+            });
+            
+            // Contract Quantities routes
+            Route::middleware(['customcan:manage_contracts'])->group(function () {
+                Route::resource('/contract-quantities', ContractQuantitiesController::class);
+                Route::get('/contract-quantities/list', [ContractQuantitiesController::class, 'list'])->name('contract-quantities.list');
+                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.contract-create');
+                Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.custom-edit');
+                Route::put('/contract-quantities/{id}', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.custom-update');
+                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.custom-show');
                 Route::get('/contract-quantities/contract/{contractId}/upload', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
                 Route::post('/contract-quantities/contract/{contractId}/bulk-upload', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
                 Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
@@ -798,6 +849,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
             // Contract Approvals routes
             Route::middleware(['customcan:manage_contracts'])->group(function () {
                 Route::get('/contract-approvals', [ContractApprovalsController::class, 'index'])->name('contract-approvals.index');
+                Route::get('/contract-approvals/list', [ContractApprovalsController::class, 'list'])->name('contract-approvals.list');
+                Route::post('/contract-approvals/{id}/approve', [ContractApprovalsController::class, 'approveApproval'])->name('contract-approvals.approve-approval');
+                Route::post('/contract-approvals/{id}/reject', [ContractApprovalsController::class, 'rejectApproval'])->name('contract-approvals.reject-approval');
                 Route::get('/contract-approvals/{contractId}/{stage}', [ContractApprovalsController::class, 'show'])->name('contract-approvals.show');
                 Route::post('/contract-approvals/{contractId}/{stage}/approve', [ContractApprovalsController::class, 'approve'])->name('contract-approvals.approve');
                 Route::post('/contract-approvals/{contractId}/{stage}/reject', [ContractApprovalsController::class, 'reject'])->name('contract-approvals.reject');
@@ -808,9 +862,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
             // Journal Entries routes
             Route::middleware(['customcan:manage_contracts'])->group(function () {
                 Route::resource('/journal-entries', JournalEntriesController::class);
-                Route::get('/journal-entries/{id}/show', [JournalEntriesController::class, 'show'])->name('journal-entries.show');
-                Route::get('/journal-entries/{id}/edit', [JournalEntriesController::class, 'edit'])->name('journal-entries.edit');
-                Route::put('/journal-entries/{id}', [JournalEntriesController::class, 'update'])->name('journal-entries.update');
+                Route::get('/journal-entries/{id}/show', [JournalEntriesController::class, 'show'])->name('journal-entries.custom-show');
+                Route::get('/journal-entries/{id}/edit', [JournalEntriesController::class, 'edit'])->name('journal-entries.custom-edit');
+                Route::put('/journal-entries/{id}', [JournalEntriesController::class, 'update'])->name('journal-entries.custom-update');
                 Route::post('/journal-entries/{id}/post', [JournalEntriesController::class, 'postToAccounting'])->name('journal-entries.post');
                 Route::post('/journal-entries/sync-onyx-pro', [JournalEntriesController::class, 'syncWithOnyxPro'])->name('journal-entries.sync-onyx-pro');
                 Route::post('/journal-entries/generate-from-contract/{contractId}', [JournalEntriesController::class, 'generateFromContract'])->name('journal-entries.generate-from-contract');
@@ -879,7 +933,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/estimates-invoices/list', [EstimatesInvoicesController::class, 'list']);
                 Route::get('/estimates-invoices/edit/{id}', [EstimatesInvoicesController::class, 'edit'])->middleware(['customcan:edit_estimates_invoices', 'checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
                 Route::get('/estimates-invoices/view/{id}', [EstimatesInvoicesController::class, 'view'])->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices'])->name('estimates-invoices.view');
-                Route::get('/estimates-invoices/pdf/{id}', [EstimatesInvoicesController::class, 'pdf'])->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::get('/estimates/{id}', [EstimatesInvoicesController::class, 'showEstimate'])->name('estimates.show')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::get('/estimates-invoices/pdf/{id}', [EstimatesInvoicesController::class, 'pdf'])->name('estimates-invoices.pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::get('/estimates-invoices/estimate-pdf/{id}', [EstimatesInvoicesController::class, 'estimatePdf'])->name('estimates-invoices.estimate-pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
                 Route::post('/estimates-invoices/update', [EstimatesInvoicesController::class, 'update'])->middleware(['customcan:edit_estimates_invoices', 'log.activity']);
                 Route::get('/estimates-invoices/duplicate/{id}', [EstimatesInvoicesController::class, 'duplicate'])->middleware(['customcan:create_estimates_invoices', 'checkAccess:App\Models\EstimatesInvoice,EstimatesInvoice,id,estimates_invoices', 'log.activity']);
                 Route::delete('/estimates-invoices/destroy/{id}', [EstimatesInvoicesController::class, 'destroy'])->middleware(['demo_restriction', 'customcan:delete_estimates_invoices', 'checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices', 'log.activity']);
@@ -938,7 +994,7 @@ Route::middleware(['CheckInstallation'])->group(function () {
             Route::middleware(['customcan:manage_items'])->group(function () {
                 Route::resource('/item-pricing', ItemPricingController::class);
                 Route::get('/item-pricing-by-item-unit', [ItemPricingController::class, 'getPrice'])->name('item-pricing.get-price');
-                Route::get('/item-pricing/{itemPricing}/show', [ItemPricingController::class, 'show'])->name('item-pricing.show');
+                Route::get('/item-pricing/{itemPricing}/show', [ItemPricingController::class, 'show'])->name('item-pricing.custom-show');
                 Route::get('/item-pricing/{itemPricing}/with-contract-obligations', [ItemPricingController::class, 'getPricingWithContractObligationsForItem'])->name('item-pricing.contract-obligations');
             });
 
@@ -1158,5 +1214,185 @@ Route::middleware(['CheckInstallation'])->group(function () {
         Route::get('/file-manager', function () {
             return view('file-manager.index');
         })->name('file-manager.index')->middleware(['customRole:admin']);
+    });
+});
+
+// Test route for contract data verification
+Route::get('/test-contracts', function () {
+    $workspace = \App\Models\Workspace::find(1);
+    $contractCount = $workspace->contracts()->count();
+    $quantityCount = $workspace->contractQuantities()->count();
+    $approvalCount = \App\Models\ContractApproval::count();
+    $amendmentCount = \App\Models\ContractAmendment::count();
+    $journalCount = \App\Models\JournalEntry::count();
+    
+    return response()->json([
+        'workspace_id' => 1,
+        'contracts' => $contractCount,
+        'quantities' => $quantityCount,
+        'approvals' => $approvalCount,
+        'amendments' => $amendmentCount,
+        'journal_entries' => $journalCount,
+        'message' => 'Test data loaded successfully'
+    ]);
+})->name('test.contracts');
+
+// Test route for complete contract data verification
+Route::get('/test-complete-contracts', function () {
+    $data = [
+        'contracts' => \App\Models\Contract::count(),
+        'quantities' => \App\Models\ContractQuantity::count(),
+        'approvals' => \App\Models\ContractApproval::count(),
+        'amendments' => \App\Models\ContractAmendment::count(),
+        'journal_entries' => \App\Models\JournalEntry::count(),
+        'items' => \App\Models\Item::count(),
+        'item_pricings' => \App\Models\ItemPricing::count(),
+        'estimates_invoices' => \App\Models\EstimatesInvoice::count(),
+        'units' => \App\Models\Unit::count(),
+        'message' => 'Complete contract data verification'
+    ];
+    
+    return response()->json($data);
+})->name('test.complete.contracts');
+
+// Professional Cache Clear and Server Restart Routes
+Route::middleware(['auth', 'customRole:admin'])->group(function () {
+    
+    // Complete system reset route
+    Route::get('/admin/system/reset-complete', function () {
+        try {
+            // Log the reset action
+            \Log::info('System complete reset initiated by admin: ' . auth()->user()->name);
+            
+            // Clear all cache types
+            Artisan::call('cache:clear');
+            Artisan::call('route:clear');
+            Artisan::call('config:clear');
+            Artisan::call('view:clear');
+            Artisan::call('event:clear');
+            
+            // Clear compiled files
+            Artisan::call('clear-compiled');
+            
+            // Optimize the application
+            Artisan::call('optimize:clear');
+            
+            // Clear storage cache
+            $storagePath = storage_path('framework/cache');
+            if (File::exists($storagePath)) {
+                File::cleanDirectory($storagePath);
+            }
+            
+            // Clear session files
+            $sessionPath = storage_path('framework/sessions');
+            if (File::exists($sessionPath)) {
+                File::cleanDirectory($sessionPath);
+            }
+            
+            // Clear view cache
+            $viewPath = storage_path('framework/views');
+            if (File::exists($viewPath)) {
+                File::cleanDirectory($viewPath);
+            }
+            
+            // Log successful reset
+            \Log::info('System complete reset completed successfully');
+            
+            // Return success response
+            return response()->json([
+                'status' => 'success',
+                'message' => 'System completely reset and refreshed',
+                'timestamp' => now()->toISOString(),
+                'actions_performed' => [
+                    'cache_cleared',
+                    'routes_cleared',
+                    'config_cleared',
+                    'views_cleared',
+                    'events_cleared',
+                    'compiled_files_cleared',
+                    'storage_cache_cleared',
+                    'sessions_cleared',
+                    'optimization_refreshed'
+                ]
+            ], 200);
+            
+        } catch (\Exception $e) {
+            \Log::error('System reset failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'System reset failed',
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 500);
+        }
+    })->name('system.reset.complete');
+    
+    // Server restart and optimization route
+    Route::post('/admin/system/restart-server', function () {
+        try {
+            // Log server restart initiation
+            \Log::info('Server restart initiated by admin: ' . auth()->user()->name);
+            
+            // Clear all caches first
+            Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+            Artisan::call('view:clear');
+            
+            // Optimize for production
+            if (config('app.env') === 'production') {
+                Artisan::call('optimize');
+                Artisan::call('route:cache');
+                Artisan::call('config:cache');
+                Artisan::call('event:cache');
+            }
+            
+            // Log successful restart
+            \Log::info('Server restart completed successfully');
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Server restarted and optimized successfully',
+                'environment' => config('app.env'),
+                'timestamp' => now()->toISOString(),
+                'optimizations_applied' => config('app.env') === 'production' ? [
+                    'application_optimized',
+                    'routes_cached',
+                    'config_cached',
+                    'events_cached'
+                ] : [
+                    'cache_cleared',
+                    'development_mode'
+                ]
+            ], 200);
+            
+        } catch (\Exception $e) {
+            \Log::error('Server restart failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Server restart failed',
+                'error' => $e->getMessage(),
+                'timestamp' => now()->toISOString()
+            ], 500);
+        }
+    })->name('system.restart.server');
+    
+    // Cache management routes
+    Route::prefix('admin/cache')->group(function () {
+        
+        // Clear specific cache types
+        Route::post('/clear/{type}', [App\Http\Controllers\CacheManagementController::class, 'clearType'])->name('cache.clear.type');
+        
+        // Get cache status
+        Route::get('/status', [App\Http\Controllers\CacheManagementController::class, 'getStatus'])->name('cache.status');
+        
+        // Force refresh all application data
+        Route::post('/refresh-all', [App\Http\Controllers\CacheManagementController::class, 'clearAll'])->name('cache.refresh.all');
+        
+        // Additional cache management routes
+        Route::post('/optimize', [App\Http\Controllers\CacheManagementController::class, 'optimize'])->name('cache.optimize');
+        Route::post('/reset-complete', [App\Http\Controllers\CacheManagementController::class, 'completeReset'])->name('cache.reset.complete');
     });
 });

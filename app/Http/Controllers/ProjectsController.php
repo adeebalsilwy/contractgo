@@ -103,7 +103,8 @@ class ProjectsController extends Controller
             // Filter projects based on the favorite project IDs
             $projectsQuery->whereIn('projects.id', $favoriteProjectIds);
         }
-        $projects = $projectsQuery->leftJoin('pinned', function ($join) {
+        $projects = $projectsQuery->with(['status', 'priority'])
+            ->leftJoin('pinned', function ($join) {
             $join->on('pinned.pinnable_id', '=', 'projects.id')
                 ->where('pinned.pinnable_type', '=', Project::class);
         })
@@ -163,7 +164,8 @@ class ProjectsController extends Controller
             // Filter projects based on the favorite project IDs
             $projectsQuery->whereIn('projects.id', $favoriteProjectIds);
         }
-        $projects = $projectsQuery->leftJoin('pinned', function ($join) {
+        $projects = $projectsQuery->with(['status', 'priority'])
+            ->leftJoin('pinned', function ($join) {
             $join->on('pinned.pinnable_id', '=', 'projects.id')
                 ->where('pinned.pinnable_type', '=', Project::class);
         })
@@ -176,7 +178,7 @@ class ProjectsController extends Controller
     }
     public function list_view(Request $request, $type = null)
     {
-        $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects : $this->user->projects;
+        $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects()->with(['status', 'priority']) : $this->user->projects()->with(['status', 'priority']);
         $customFields = CustomField::where('module', 'project')->get();
         $is_favorites = 0;
         if ($type === 'favorite') {
@@ -184,6 +186,8 @@ class ProjectsController extends Controller
         }
         return view('projects.projects', ['projects' => $projects, 'is_favorites' => $is_favorites, 'customFields' => $customFields]);
     }
+
+
     public function ganttChartView(Request $request, $type = null)
     {
         $customFields = CustomField::where('module', 'project')->get();
@@ -528,7 +532,7 @@ class ProjectsController extends Controller
      */
     public function show($id)
     {
-        $project = Project::findOrFail($id);
+        $project = Project::with(['status', 'priority'])->findOrFail($id);
         $projectTags = $project->tags;
         $types = getControllerNames();
         $comments = $project->comments;
@@ -537,7 +541,7 @@ class ProjectsController extends Controller
     }
     public function get($projectId)
     {
-        $project = Project::findOrFail($projectId);
+        $project = Project::with(['status', 'priority'])->findOrFail($projectId);
         $project->budget = format_currency($project->budget, false, false);
         $users = $project->users()->get();
         $clients = $project->clients()->get();
@@ -1011,9 +1015,9 @@ class ProjectsController extends Controller
             $belongs_to = $id[0];
             $belongs_to_id = $id[1];
             $userOrClient = $belongs_to == 'user' ? User::find($belongs_to_id) : Client::find($belongs_to_id);
-            $projects = isAdminOrHasAllDataAccess($belongs_to, $belongs_to_id) ? $this->workspace->projects() : $userOrClient->projects();
+            $projects = isAdminOrHasAllDataAccess($belongs_to, $belongs_to_id) ? $this->workspace->projects()->with(['status', 'priority']) : $userOrClient->projects()->with(['status', 'priority']);
         } else {
-            $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects() : $this->user->projects();
+            $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects()->with(['status', 'priority']) : $this->user->projects()->with(['status', 'priority']);
         }
         if (!empty($user_ids)) {
             $projects = $projects->whereHas('users', function ($query) use ($user_ids) {
@@ -1172,14 +1176,14 @@ class ProjectsController extends Controller
                         'end_date' => format_date($project->end_date),
                         'budget' => !empty($project->budget) && $project->budget !== null ? format_currency($project->budget) : '-',
                         'status_id' => "<div class='d-flex align-items-center'>
-                            <select class='form-select form-select-sm select-bg-label-{$project->status->color} fixed-width-select' id='statusSelect' data-id='{$project->id}' data-original-status-id='{$project->status->id}' data-original-color-class='select-bg-label-{$project->status->color}'" . ($isHome ? ' data-reload="true"' : '') . ">
+                            <select class='form-select form-select-sm select-bg-label-" . ($project->status && is_object($project->status) ? $project->status->color : 'secondary') . " fixed-width-select' id='statusSelect' data-id='{$project->id}' data-original-status-id='" . ($project->status && is_object($project->status) ? $project->status->id : '') . "' data-original-color-class='select-bg-label-" . ($project->status && is_object($project->status) ? $project->status->color : 'secondary') . "'" . ($isHome ? ' data-reload="true"' : '') . ">
                                 {$statusOptions}
                             </select>
                             " . ($project->note ?
                             "<i class='bx bx-notepad ms-2 text-primary' title='{$project->note}'></i>"
                             : "") . "
                         </div>",
-                        'priority_id' => "<select class='form-select form-select-sm select-bg-label-" . ($project->priority ? $project->priority->color : 'secondary') . "' id='prioritySelect' data-id='{$project->id}' data-original-priority-id='" . ($project->priority ? $project->priority->id : '') . "' data-original-color-class='select-bg-label-" . ($project->priority ? $project->priority->color : 'secondary') . "'>{$priorityOptions}</select>",
+                        'priority_id' => "<select class='form-select form-select-sm select-bg-label-" . ($project->priority && is_object($project->priority) ? $project->priority->color : 'secondary') . "' id='prioritySelect' data-id='{$project->id}' data-original-priority-id='" . ($project->priority && is_object($project->priority) ? $project->priority->id : '') . "' data-original-color-class='select-bg-label-" . ($project->priority && is_object($project->priority) ? $project->priority->color : 'secondary') . "'>{$priorityOptions}</select>",
                         'task_accessibility' => get_label($project->task_accessibility, ucwords(str_replace("_", " ", $project->task_accessibility))),
                         'tags' => $tagHtml ?: ' - ',
                         'created_at' => format_date($project->created_at, true),
@@ -3543,7 +3547,7 @@ class ProjectsController extends Controller
         $isApi = request()->get('isApi', false);
 
         try {
-            $project = Project::with(['users', 'tasks.users', 'clients', 'milestones', 'media'])->findOrFail($id);
+            $project = Project::with(['users', 'tasks.users', 'clients', 'milestones', 'media', 'contracts.quantities', 'contracts.approvals', 'contracts.amendments', 'contracts.journalEntries'])->findOrFail($id);
         } catch (ModelNotFoundException $e) {
             if ($isApi) {
                 return response()->json([
@@ -3574,8 +3578,79 @@ class ProjectsController extends Controller
                 'level' => 1,
                 'children' => [
                     [
+                        'id' => 'contracts',
+                        'topic' => 'العقود والمستخلصات',
+                        'level' => 2,
+                        'children' => $project->contracts->map(function ($contract) {
+                            return [
+                                'id' => 'contract_' . $contract->id,
+                                'topic' => $contract->title,
+                                'link' => url('contracts/' . $contract->id),
+                                'children' => [
+                                    [
+                                        'id' => 'contract_quantities_' . $contract->id,
+                                        'topic' => 'الكميات',
+                                        'children' => $contract->quantities->map(function ($quantity) use ($contract) {
+                                            return [
+                                                'id' => 'quantity_' . $quantity->id,
+                                                'topic' => $quantity->item_description . ' (' . $quantity->requested_quantity . ' ' . $quantity->unit . ')',
+                                                'link' => url('contract-quantities/' . $quantity->id),
+                                                'data' => [
+                                                    'status' => $quantity->status,
+                                                    'amount' => format_currency($quantity->total_amount, 0)
+                                                ]
+                                            ];
+                                        })->toArray()
+                                    ],
+                                    [
+                                        'id' => 'contract_approvals_' . $contract->id,
+                                        'topic' => 'الموافقات',
+                                        'children' => $contract->approvals->map(function ($approval) use ($contract) {
+                                            return [
+                                                'id' => 'approval_' . $approval->id,
+                                                'topic' => 'مرحلة ' . $this->getApprovalStageName($approval->approval_stage),
+                                                'data' => [
+                                                    'status' => $approval->status,
+                                                    'approver' => $approval->approver->first_name . ' ' . $approval->approver->last_name
+                                                ]
+                                            ];
+                                        })->toArray()
+                                    ],
+                                    [
+                                        'id' => 'contract_amendments_' . $contract->id,
+                                        'topic' => 'التعديلات',
+                                        'children' => $contract->amendments->map(function ($amendment) use ($contract) {
+                                            return [
+                                                'id' => 'amendment_' . $amendment->id,
+                                                'topic' => 'تعديل ' . $this->getAmendmentTypeName($amendment->amendment_type),
+                                                'data' => [
+                                                    'status' => $amendment->status,
+                                                    'reason' => $amendment->request_reason
+                                                ]
+                                            ];
+                                        })->toArray()
+                                    ],
+                                    [
+                                        'id' => 'contract_journal_entries_' . $contract->id,
+                                        'topic' => 'القيود المحاسبية',
+                                        'children' => $contract->journalEntries->map(function ($entry) use ($contract) {
+                                            return [
+                                                'id' => 'journal_entry_' . $entry->id,
+                                                'topic' => $entry->entry_number . ' - ' . $entry->account_name,
+                                                'data' => [
+                                                    'amount' => format_currency($entry->debit_amount - $entry->credit_amount, 0),
+                                                    'status' => $entry->status
+                                                ]
+                                            ];
+                                        })->toArray()
+                                    ]
+                                ]
+                            ];
+                        })->toArray()
+                    ],
+                    [
                         'id' => 'tasks',
-                        'topic' => 'Tasks',
+                        'topic' => 'المهام',
                         'level' => 2,
                         'children' => $project->tasks->map(function ($task) {
                             return [
@@ -3585,7 +3660,7 @@ class ProjectsController extends Controller
                                 'children' => [
                                     [
                                         'id' => 'task_users_' . $task->id, // Make it unique with task ID
-                                        'topic' => 'Users',
+                                        'topic' => 'المستخدمون',
                                         'children' => $task->users->map(function ($user) use ($task) {
                                             return [
                                                 'id' => 'task_user_' . $task->id . '_' . $user->id, // Unique ID
@@ -3596,7 +3671,7 @@ class ProjectsController extends Controller
                                     ],
                                     [
                                         'id' => 'task_clients_' . $task->id, // Make it unique with task ID
-                                        'topic' => 'Clients',
+                                        'topic' => 'العملاء',
                                         'children' => $task->project->clients->map(function ($client) use ($task) {
                                             return [
                                                 'id' => 'task_client_' . $task->id . '_' . $client->id, // Unique ID
@@ -3611,7 +3686,7 @@ class ProjectsController extends Controller
                     ],
                     [
                         'id' => 'users',
-                        'topic' => 'Users',
+                        'topic' => 'المستخدمون',
                         'children' => $project->users->map(function ($user) {
                             return [
                                 'id' => 'user_' . $user->id,
@@ -3622,7 +3697,7 @@ class ProjectsController extends Controller
                     ],
                     [
                         'id' => 'clients',
-                        'topic' => 'Clients',
+                        'topic' => 'العملاء',
                         'children' => $project->clients->map(function ($client) {
                             return [
                                 'id' => 'client_' . $client->id,
@@ -3633,7 +3708,7 @@ class ProjectsController extends Controller
                     ],
                     [
                         'id' => 'milestones',
-                        'topic' => 'Milestones',
+                        'topic' => 'المراحل',
                         'children' => $project->milestones->map(function ($milestone) {
                             return [
                                 'id' => 'milestone_' . $milestone->id,
@@ -3643,7 +3718,7 @@ class ProjectsController extends Controller
                     ],
                     [
                         'id' => 'media',
-                        'topic' => 'Media',
+                        'topic' => 'الوسائط',
                         'children' => $project->media->map(function ($mediaItem) {
                             $isPublicDisk = $mediaItem->disk == 'public' ? 1 : 0;
                             $fileUrl = $isPublicDisk
@@ -3705,6 +3780,30 @@ class ProjectsController extends Controller
         });
         return response()->json($filteredProjects->values());
     }
+    private function getApprovalStageName($stage)
+    {
+        $stages = [
+            'quantity_approval' => 'الموافقة على الكميات',
+            'management_review' => 'مراجعة الإدارة',
+            'accounting_review' => 'مراجعة محاسبية',
+            'final_approval' => 'الموافقة النهائية'
+        ];
+        
+        return $stages[$stage] ?? $stage;
+    }
+    
+    private function getAmendmentTypeName($type)
+    {
+        $types = [
+            'duration_extension' => 'تمديد المدة',
+            'scope_change' => 'تغيير النطاق',
+            'budget_adjustment' => 'تعديل الميزانية',
+            'technical_modification' => 'تعديل تقني'
+        ];
+        
+        return $types[$type] ?? $type;
+    }
+    
     protected function parseDate($dateString)
     {
         // Remove timezone abbreviation and parse the date

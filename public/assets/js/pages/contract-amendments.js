@@ -3,11 +3,53 @@
 function queryParamsContractAmendments(params) {
     return {
         ...params,
-        status: document.getElementById('amendment_status_filter')?.value || '',
-        amendment_type: document.getElementById('amendment_type_filter')?.value || '',
-        contract_ids: document.getElementById('amendment_contract_filter')?.value ? document.getElementById('amendment_contract_filter').value.split(',') : []
+        status: document.getElementById('statusFilter')?.value || '',
+        amendment_type: document.getElementById('typeFilter')?.value || '',
+        search: document.getElementById('searchInput')?.value || ''
     };
 }
+
+// Initialize DataTable when document is ready
+$(document).ready(function() {
+    // Initialize the main table
+    $('#dataTable').bootstrapTable({
+        url: baseUrl + '/contract-amendments/list',
+        method: 'GET',
+        pagination: true,
+        sidePagination: 'server',
+        pageSize: 10,
+        pageList: [10, 25, 50, 100],
+        queryParams: queryParamsContractAmendments,
+        responseHandler: function(res) {
+            return {
+                total: res.total,
+                rows: res.rows
+            };
+        },
+        columns: [
+            { field: 'id', title: 'ID', sortable: true },
+            { field: 'contract_title', title: 'Contract', sortable: true },
+            { field: 'amendment_type', title: 'Type', sortable: true },
+            { field: 'request_reason', title: 'Reason', sortable: true },
+            { field: 'original_value', title: 'Original Value', sortable: true },
+            { field: 'new_value', title: 'New Value', sortable: true },
+            { field: 'requested_by', title: 'Requested By', sortable: true },
+            { field: 'status', title: 'Status', sortable: true },
+            { field: 'requested_at', title: 'Requested At', sortable: true },
+            { field: 'actions', title: 'Actions' }
+        ]
+    });
+
+    // Handle filter button click
+    $('#filterBtn').click(function() {
+        $('#dataTable').bootstrapTable('refresh');
+    });
+
+    // Handle search input keyup
+    $('#searchInput').on('keyup', function() {
+        $('#dataTable').bootstrapTable('refresh');
+    });
+});
 
 // Status filter
 if (document.getElementById('amendment_status_filter')) {

@@ -1264,9 +1264,9 @@ class ReportsController extends Controller
                 DB::raw('SUM(CASE WHEN type = "invoice" THEN 1 ELSE 0 END) as invoice_count'),
                 DB::raw('SUM(CASE WHEN type = "invoice" THEN final_total ELSE 0 END) as invoice_total')
             )
-            ->groupBy('year', 'month')
-            ->orderBy('year', 'desc')
-            ->orderBy('month', 'desc')
+            ->groupBy(DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'))
+            ->orderBy(DB::raw('YEAR(created_at)'), 'desc')
+            ->orderBy(DB::raw('MONTH(created_at)'), 'desc')
             ->limit(12)
             ->get();
         
@@ -1327,7 +1327,7 @@ class ReportsController extends Controller
                 DB::raw('SUM(CASE WHEN type = "invoice" THEN 1 ELSE 0 END) as invoices'),
                 DB::raw('SUM(CASE WHEN type = "invoice" THEN final_total ELSE 0 END) as revenue')
             )
-            ->groupBy('month')
+            ->groupBy(DB::raw('DATE_FORMAT(created_at, "%Y-%m")'))
             ->orderBy('month')
             ->get();
         

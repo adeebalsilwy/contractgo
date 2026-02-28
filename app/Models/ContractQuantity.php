@@ -12,6 +12,7 @@ class ContractQuantity extends Model
     protected $fillable = [
         'contract_id',
         'user_id',
+        'workspace_id',
         'item_description',
         'requested_quantity',
         'approved_quantity',
@@ -51,5 +52,16 @@ class ContractQuantity extends Model
     public function approvedRejectedBy()
     {
         return $this->belongsTo(User::class, 'approved_rejected_by'); // Manager who approved/rejected
+    }
+    
+    public function workspace()
+    {
+        return $this->belongsTo(Workspace::class);
+    }
+    
+    // Relationship to connect ContractQuantity to Item via item_description matching title
+    public function item()
+    {
+        return $this->hasOne(Item::class, 'title', 'item_description');
     }
 }

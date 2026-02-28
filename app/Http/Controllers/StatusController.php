@@ -604,4 +604,27 @@ class StatusController extends Controller
             return response()->json(['error' => false, 'message' => 'Status(es) deleted successfully.', 'id' => $deletedIds, 'titles' => $deletedTitles]);
         }
     }
+
+    /**
+     * Get statuses for a specific type
+     * 
+     * @param string $type The type of statuses to retrieve (task, project, etc.)
+     * @return array
+     */
+    public function getStatuses($type = 'task')
+    {
+        try {
+            $statuses = Status::select('id', 'title', 'color')->get()->map(function ($status) {
+                return [
+                    'id' => $status->id,
+                    'title' => $status->title ?? $status->name ?? 'Untitled',
+                    'color' => $status->color ?? '#6c757d',
+                ];
+            });
+            return $statuses;
+        } catch (\Exception $e) {
+            \Log::error('Error in getStatuses: ' . $e->getMessage());
+            return collect();
+        }
+    }
 }

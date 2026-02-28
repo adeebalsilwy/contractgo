@@ -56,13 +56,13 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         // Create default roles
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        $managerRole = Role::firstOrCreate(['name' => 'manager']);
-        $employeeRole = Role::firstOrCreate(['name' => 'employee']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $managerRole = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $employeeRole = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
 
         // Assign permissions to admin role (admin gets all permissions)
         $adminRole->givePermissionTo(Permission::all());

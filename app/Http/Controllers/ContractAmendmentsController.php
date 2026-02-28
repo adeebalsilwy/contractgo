@@ -43,6 +43,163 @@ class ContractAmendmentsController extends Controller
     }
 
     /**
+     * API endpoint for contract amendments list data.
+     */
+    public function list(Request $request)
+    {
+        try {
+            $query = ContractAmendment::with(['contract', 'requestedBy', 'approvedBy']);
+
+            // Filter by status
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Filter by amendment type
+            if ($request->filled('amendment_type')) {
+                $query->where('amendment_type', $request->amendment_type);
+            }
+
+            // Filter by contract
+            if ($request->filled('contract_id')) {
+                $query->where('contract_id', $request->contract_id);
+            }
+
+            // Search functionality
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('request_reason', 'like', "%{$search}%")
+                      ->orWhere('details', 'like', "%{$search}%")
+                      ->orWhereHas('contract', function($contractQuery) use ($search) {
+                          $contractQuery->where('title', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Sorting
+            $sortBy = $request->get('sort', 'created_at');
+            $sortOrder = $request->get('order', 'desc');
+            
+            if (in_array($sortBy, ['id', 'created_at', 'updated_at', 'status'])) {
+                $query->orderBy($sortBy, $sortOrder);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
+
+            // Pagination
+            $limit = $request->get('limit', 10);
+            $page = $request->get('page', 1);
+            
+            $amendments = $query->paginate($limit, ['*'], 'page', $page);
+
+            // Format the response for DataTable
+            $rows = [];
+            foreach ($amendments->items() as $amendment) {
+                $rows[] = [
+                    'id' => $amendment->id,
+                    'contract_title' => $amendment->contract->title ?? 'N/A',
+                    'contract_id' => $amendment->contract_id,
+                    'amendment_type' => $this->getAmendmentTypeLabel($amendment->amendment_type),
+                    'request_reason' => $amendment->request_reason,
+                    'original_value' => $this->formatValue($amendment->original_price, $amendment->original_quantity),
+                    'new_value' => $this->formatValue($amendment->new_price, $amendment->new_quantity),
+                    'requested_by' => $amendment->requestedBy->first_name . ' ' . $amendment->requestedBy->last_name,
+                    'status' => $this->getStatusBadge($amendment->status),
+                    'requested_at' => format_date($amendment->created_at, true),
+                    'actions' => $this->getActionButtons($amendment)
+                ];
+            }
+            
+            $data = [
+                'total' => $amendments->total(),
+                'rows' => $rows,
+                'current_page' => $amendments->currentPage(),
+                'last_page' => $amendments->lastPage(),
+                'per_page' => $amendments->perPage()
+            ];
+
+            return response()->json($data);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => config('app.debug') ? $e->getMessage() : 'An error occurred while fetching amendments data.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get formatted value for display.
+     */
+    private function formatValue($price, $quantity)
+    {
+        if ($price && $quantity) {
+            return number_format($price, 2) . ' × ' . number_format($quantity, 2);
+        } elseif ($price) {
+            return number_format($price, 2);
+        } elseif ($quantity) {
+            return number_format($quantity, 2);
+        }
+        return 'N/A';
+    }
+
+    /**
+     * Get amendment type label.
+     */
+    private function getAmendmentTypeLabel($type)
+    {
+        $labels = [
+            'price' => 'Price',
+            'quantity' => 'Quantity',
+            'specification' => 'Specification',
+            'other' => 'Other'
+        ];
+        
+        return $labels[$type] ?? ucfirst($type);
+    }
+
+    /**
+     * Get status badge HTML.
+     */
+    private function getStatusBadge($status)
+    {
+        $badges = [
+            'pending' => '<span class="badge bg-warning">Pending</span>',
+            'approved' => '<span class="badge bg-success">Approved</span>',
+            'rejected' => '<span class="badge bg-danger">Rejected</span>'
+        ];
+        
+        return $badges[$status] ?? '<span class="badge bg-secondary">' . ucfirst($status) . '</span>';
+    }
+
+    /**
+     * Get action buttons HTML.
+     */
+    private function getActionButtons($amendment)
+    {
+        $buttons = '';
+        
+        // View button
+        $buttons .= '<a href="' . route('contract-amendments.show', $amendment->id) . '" class="btn btn-sm btn-info" title="View Details">';
+        $buttons .= '<i class="bx bx-show"></i></a> ';
+        
+        // Edit button (only for pending amendments)
+        if ($amendment->status === 'pending') {
+            $buttons .= '<a href="' . route('contract-amendments.edit', $amendment->id) . '" class="btn btn-sm btn-primary" title="Approve/Reject">';
+            $buttons .= '<i class="bx bx-edit"></i></a> ';
+        }
+        
+        // Delete button (only for pending amendments)
+        if ($amendment->status === 'pending') {
+            $buttons .= '<button type="button" class="btn btn-sm btn-danger delete" data-id="' . $amendment->id . '" data-type="contract-amendments" title="Delete">';
+            $buttons .= '<i class="bx bx-trash"></i></button>';
+        }
+        
+        return $buttons;
+    }
+
+    /**
      * Show the form for creating a new amendment request.
      */
     public function create(Request $request)

@@ -140,9 +140,15 @@ class YemeniUsersSeeder extends Seeder
         }
 
         foreach ($users as $userData) {
-            // Set default workspace ID after ensuring workspace exists
-            $userData['default_workspace_id'] = $defaultWorkspace->id;
-            User::create($userData);
+            // Check if user already exists
+            if (!User::where('email', $userData['email'])->exists()) {
+                // Set default workspace ID after ensuring workspace exists
+                $userData['default_workspace_id'] = $defaultWorkspace->id;
+                User::create($userData);
+                $this->command->info('Created user: ' . $userData['first_name'] . ' ' . $userData['last_name']);
+            } else {
+                $this->command->info('User already exists: ' . $userData['first_name'] . ' ' . $userData['last_name']);
+            }
         }
     }
 }
