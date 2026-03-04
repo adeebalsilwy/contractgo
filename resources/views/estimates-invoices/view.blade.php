@@ -24,12 +24,17 @@ use App\Models\Tax; // Adjust the namespace and path according to your applicati
             </nav>
         </div>
         <div>
+            <a href="{{ url('estimates-invoices/mind-map/' . $estimate_invoice->id) }}" class="ms-2">
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('view_mind_map', 'View Mind Map') ?>">
+                    <i class="bx bx-sitemap"></i>
+                </button>
+            </a>
             <a href="{{ url('estimates-invoices/pdf/' . $estimate_invoice->id) }}" class="ms-2">
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="{{ get_label('view_pdf', 'View PDF') }}">
                     <i class="bx bx-file"></i>
                 </button>
             </a>
-            <a href="{{url('estimates-invoices')}}"><button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title=" <?= get_label('etimates_invoices', 'Estiamtes/Invoices') ?>"><i class="bx bx-list-ul"></i></button></a>
+            <a href="{{url('estimates-invoices')}}"><button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title=" <?= get_label('estimates_invoices', 'Estimates/Invoices') ?>"><i class="bx bx-list-ul"></i></button></a>
         </div>
     </div>
     <div class="card">
@@ -55,36 +60,36 @@ use App\Models\Tax; // Adjust the namespace and path according to your applicati
                     <!-- Company details -->
                     <div class="col-md-4">
                         <p class="no-margin-p">
-                            <strong>{{ $general_settings['company_title'] }}</strong>
+                            <strong>{{ $general_settings['company_title'] ?? 'Company Name' }}</strong>
                         </p>
                         <!-- Company address and contact details -->
-                        @if($company_info['companyAddress'])
-                        <p class="no-margin-p">{{ $company_info['companyAddress'] }}</p>
+                        @if($general_settings['company_address'] ?? '')
+                        <p class="no-margin-p">{{ $general_settings['company_address'] }}</p>
                         @endif
                         @php
                         $addressParts = [
-                        $company_info['companyCity'] ?? '',
-                        $company_info['companyState'] ?? '',
-                        $company_info['companyCountry'] ?? '',
-                        $company_info['companyZip'] ?? '',
+                        $general_settings['company_city'] ?? '',
+                        $general_settings['company_state'] ?? '',
+                        $general_settings['company_country'] ?? '',
+                        $general_settings['company_zip'] ?? '',
                         ];
                         $addressParts = array_filter($addressParts); // Remove empty values
-                        $city_state_country_zip = implode(', ', $addressParts);
+                        $companyAddress = implode(', ', $addressParts);
                         @endphp
-                        @if($city_state_country_zip)
-                        <p class="no-margin-p">{{ $city_state_country_zip }}</p>
+                        @if($companyAddress)
+                        <p class="no-margin-p">{{ $companyAddress }}</p>
                         @endif
-                        @if($company_info['companyPhone'])
-                        <p class="no-margin-p">{{get_label('phone','Phone')}}: {{ $company_info['companyPhone'] }}</p>
+                        @if($general_settings['company_phone'] ?? '')
+                        <p class="no-margin-p">{{get_label('phone','Phone')}}: {{ $general_settings['company_phone'] }}</p>
                         @endif
-                        @if($company_info['companyEmail'])
-                        <p class="no-margin-p">{{get_label('email','Email')}}: {{ $company_info['companyEmail'] }}</p>
+                        @if($general_settings['company_email'] ?? '')
+                        <p class="no-margin-p">{{get_label('email','Email')}}: {{ $general_settings['company_email'] }}</p>
                         @endif
-                        @if($company_info['companyWebsite'])
-                        <p class="no-margin-p">{{get_label('website','Website')}}: {{ $company_info['companyWebsite'] }}</p>
+                        @if($general_settings['company_website'] ?? '')
+                        <p class="no-margin-p">{{get_label('website','Website')}}: {{ $general_settings['company_website'] }}</p>
                         @endif
-                        @if($company_info['companyVatNumber'])
-                        <p class="no-margin-p">{{get_label('vat_number','VAT Number')}}: {{ $company_info['companyVatNumber'] }}</p>
+                        @if($general_settings['company_vat_number'] ?? '')
+                        <p class="no-margin-p">{{get_label('vat_number','VAT Number')}}: {{ $general_settings['company_vat_number'] }}</p>
                         @endif
                     </div>
 
@@ -92,17 +97,44 @@ use App\Models\Tax; // Adjust the namespace and path according to your applicati
                     <div class="col-md-4">
                         <strong>{{ get_label('billing_details', 'Billing details') }}</strong>
                         <hr>
+                        @if($estimate_invoice->client)
+                        <p class="no-margin-p"><strong>{{ $estimate_invoice->client->first_name ?? '' }} {{ $estimate_invoice->client->last_name ?? '' }}</strong></p>
+                        @if($estimate_invoice->client->company)
+                        <p class="no-margin-p text-muted">{{ $estimate_invoice->client->company }}</p>
+                        @endif
+                        @else
                         @if($estimate_invoice->name)
                         <p class="no-margin-p"><strong>{{ $estimate_invoice->name }}</strong></p>
+                        @endif
                         @endif
                         @if($estimate_invoice->address)
                         <p class="no-margin-p">{{ $estimate_invoice->address }}</p>
                         @endif
-                        @if($city_state_country_zip)
-                        <p class="no-margin-p">{{ $city_state_country_zip }}</p>
+                        @php
+                        $clientCityState = [];
+                        if($estimate_invoice->client) {
+                            if($estimate_invoice->client->city) $clientCityState[] = $estimate_invoice->client->city;
+                            if($estimate_invoice->client->state) $clientCityState[] = $estimate_invoice->client->state;
+                            if($estimate_invoice->client->country) $clientCityState[] = $estimate_invoice->client->country;
+                            if($estimate_invoice->client->zip) $clientCityState[] = $estimate_invoice->client->zip;
+                        } else {
+                            if($estimate_invoice->city) $clientCityState[] = $estimate_invoice->city;
+                            if($estimate_invoice->state) $clientCityState[] = $estimate_invoice->state;
+                            if($estimate_invoice->country) $clientCityState[] = $estimate_invoice->country;
+                            if($estimate_invoice->zip_code) $clientCityState[] = $estimate_invoice->zip_code;
+                        }
+                        $clientAddress = implode(', ', $clientCityState);
+                        @endphp
+                        @if($clientAddress)
+                        <p class="no-margin-p">{{ $clientAddress }}</p>
                         @endif
-                        @if($estimate_invoice->phone)
-                        <p class="no-margin-p">{{ $estimate_invoice->phone }}</p>
+                        @if($estimate_invoice->client && $estimate_invoice->client->phone)
+                        <p class="no-margin-p">{{ get_label('phone', 'Phone') }}: {{ $estimate_invoice->client->phone }}</p>
+                        @elseif($estimate_invoice->phone)
+                        <p class="no-margin-p">{{ get_label('phone', 'Phone') }}: {{ $estimate_invoice->phone }}</p>
+                        @endif
+                        @if($estimate_invoice->client && $estimate_invoice->client->email)
+                        <p class="no-margin-p">{{ get_label('email', 'Email') }}: {{ $estimate_invoice->client->email }}</p>
                         @endif
                     </div>
 
@@ -114,6 +146,23 @@ use App\Models\Tax; // Adjust the namespace and path according to your applicati
                         <p class="no-margin-p"><strong>{{ get_label('from_date', 'From date') }}:</strong> {{$estimate_invoice->from_date}}</p>
                         <p class="no-margin-p"><strong>{{ get_label('to_date', 'To date') }}:</strong> {{$estimate_invoice->to_date}}</p>
                         <p class="no-margin-p"><strong>{{ get_label('status', 'Status') }}:</strong> <?= $estimate_invoice->status ?></p>
+                        
+                        <!-- Related Contract/Project Details -->
+                        @if($estimate_invoice->contract_id)
+                        <div class="mt-3 pt-2 border-top">
+                            <strong class="text-info">{{ get_label('related_contract', 'Related Contract') }}</strong>
+                            <p class="no-margin-p"><strong>{{ get_label('contract_id', 'Contract ID') }}:</strong> #{{ $estimate_invoice->contract_id }}</p>
+                            @if(isset($relatedContract))
+                            <p class="no-margin-p"><strong>{{ get_label('contract_title', 'Contract Title') }}:</strong> {{ $relatedContract->title ?? 'N/A' }}</p>
+                            @if(isset($relatedProject))
+                            <p class="no-margin-p"><strong>{{ get_label('project', 'Project') }}:</strong> {{ $relatedProject->title ?? 'N/A' }}</p>
+                            @endif
+                            @if(isset($contractor))
+                            <p class="no-margin-p"><strong>{{ get_label('contractor', 'Contractor') }}:</strong> {{ $contractor->first_name ?? '' }} {{ $contractor->last_name ?? '' }}</p>
+                            @endif
+                            @endif
+                        </div>
+                        @endif
                     </div>
                 </div>
                 <hr>

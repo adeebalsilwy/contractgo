@@ -11,6 +11,7 @@ class EstimatesInvoice extends Model
     protected $fillable = [
         'workspace_id',
         'client_id',
+        'contract_id',  // Adding contract_id to the fillable array
         'name',
         'address',
         'city',
@@ -47,5 +48,23 @@ class EstimatesInvoice extends Model
     public function contract()
     {
         return $this->belongsTo(Contract::class, 'contract_id');
+    }
+    
+    // Enhanced relationship to get the project through the contract
+    public function project()
+    {
+        return $this->hasOneThrough(Project::class, Contract::class, 'id', 'id', 'contract_id', 'project_id');
+    }
+    
+    // Enhanced relationship to get the clients through the contract
+    public function contractClients()
+    {
+        $clients = collect();
+        if ($this->contract && $this->contract->client) {
+            $clients->push($this->contract->client);
+        } elseif ($this->client) {
+            $clients->push($this->client);
+        }
+        return $clients;
     }
 }

@@ -115,13 +115,17 @@ class ProjectsController extends Controller
 
         // custome field
         $customFields = CustomField::where('module', 'project')->get();
+        $statuses = Status::all();
+        $priorities = Priority::all();
 
         return view('projects.grid_view', [
             'projects' => $projects,
             'auth_user' => $this->user,
             'selectedTags' => $selectedTags,
             'is_favorite' => $is_favorite,
-            'customFields' => $customFields
+            'customFields' => $customFields,
+            'statuses' => $statuses,
+            'priorities' => $priorities
         ]);
     }
     public function kanban_view(Request $request, $type = null)
@@ -174,28 +178,53 @@ class ProjectsController extends Controller
             ->orderBy($sort, $order)->get();
 
         $customFields = CustomField::where('module', 'project')->get();
-        return view('projects.kanban', ['projects' => $projects, 'auth_user' => $this->user, 'selectedTags' => $selectedTags, 'is_favorite' => $is_favorite, 'customFields' => $customFields]);
+        $statuses = Status::all();
+        $priorities = Priority::all();
+        return view('projects.kanban', [
+            'projects' => $projects, 
+            'auth_user' => $this->user, 
+            'selectedTags' => $selectedTags, 
+            'is_favorite' => $is_favorite, 
+            'customFields' => $customFields,
+            'statuses' => $statuses,
+            'priorities' => $priorities
+        ]);
     }
     public function list_view(Request $request, $type = null)
     {
-        $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects()->with(['status', 'priority']) : $this->user->projects()->with(['status', 'priority']);
+        $projects = isAdminOrHasAllDataAccess() ? $this->workspace->projects()->with(['statusRelation', 'priority'])->get() : $this->user->projects()->with(['statusRelation', 'priority'])->get();
         $customFields = CustomField::where('module', 'project')->get();
+        $statuses = Status::all();
+        $priorities = Priority::all();
         $is_favorites = 0;
         if ($type === 'favorite') {
             $is_favorites = 1;
         }
-        return view('projects.projects', ['projects' => $projects, 'is_favorites' => $is_favorites, 'customFields' => $customFields]);
+        return view('projects.projects', [
+            'projects' => $projects, 
+            'is_favorites' => $is_favorites, 
+            'customFields' => $customFields,
+            'statuses' => $statuses,
+            'priorities' => $priorities
+        ]);
     }
 
 
     public function ganttChartView(Request $request, $type = null)
     {
         $customFields = CustomField::where('module', 'project')->get();
+        $statuses = Status::all();
+        $priorities = Priority::all();
         $is_favorite = 0;
         if ($type === 'favorite') {
             $is_favorite = 1;
         }
-        return view('projects.gantt_chart', ['is_favorite' => $is_favorite, 'customFields' => $customFields]);
+        return view('projects.gantt_chart', [
+            'is_favorite' => $is_favorite, 
+            'customFields' => $customFields,
+            'statuses' => $statuses,
+            'priorities' => $priorities
+        ]);
     }
     /**
      * Create a new project.
@@ -356,7 +385,7 @@ class ProjectsController extends Controller
                     }
                 }
             ],
-            'description' => 'nullable|string',
+            'description' => 'required|string',
             'note' => 'nullable|string',
             'user_id' => 'nullable|array',
             'user_id.*' => 'integer|exists:users,id', // Validate that each user_id exists in the users table
@@ -388,8 +417,13 @@ class ProjectsController extends Controller
                 $formFields['budget'] = str_replace(',', '', $request->input('budget'));
                 $formFields['workspace_id'] = getWorkspaceId();
                 $formFields['created_by'] = $this->user->id;
-                unset($formFields['user_id']);
-                unset($formFields['client_id']);
+                // Set required user_id and client_id fields for database
+                $formFields['user_id'] = $request->input('user_id') ? implode(',', $request->input('user_id')) : '';
+                $formFields['client_id'] = $request->input('client_id') ? implode(',', $request->input('client_id')) : '';
+                        
+                // Set required status field (in addition to status_id)
+                $statusTitle = DB::table('statuses')->where('id', $formFields['status_id'])->value('title') ?? 'Pending';
+                $formFields['status'] = $statusTitle;
                 unset($formFields['tag_ids']);
                 $clientCanDiscuss = isAdminOrHasAllDataAccess() && $request->filled('clientCanDiscuss') && $request->input('clientCanDiscuss') == 'on' ? 1 : 0;
                 $formFields['client_can_discuss'] = $clientCanDiscuss;
@@ -469,11 +503,18 @@ class ProjectsController extends Controller
         } catch (ValidationException $e) {
             return formatApiValidationError($isApi, $e->errors());
         } catch (\Exception $e) {
-            // dd($e);
-            // Handle any unexpected errors
+            // Log the actual exception with details for debugging
+            Log::error('Project creation failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return detailed error message for debugging
             return response()->json([
                 'error' => true,
-                'message' => 'An error occurred while creating the project.'
+                'message' => 'An error occurred while creating the project: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -532,26 +573,174 @@ class ProjectsController extends Controller
      */
     public function show($id)
     {
-        $project = Project::with(['status', 'priority'])->findOrFail($id);
+        $project = Project::with(['status', 'priority', 'users', 'clients', 'contracts', 'contracts.client', 'contracts.estimatesInvoices', 'tasks', 'tasks.status', 'tasks.priority', 'tags'])->findOrFail($id);
         $projectTags = $project->tags;
         $types = getControllerNames();
         $comments = $project->comments;
         $customFields = CustomField::where('module', 'project')->get();
-        return view('projects.project_information', ['project' => $project, 'projectTags' => $projectTags, 'types' => $types, 'auth_user' => $this->user, 'comments' => $comments, 'customFields' => $customFields]);
+        
+        // Load additional related data through enhanced relationships
+        $relatedClients = $project->allRelatedClients;
+        $projectEstimatesInvoices = $project->projectEstimatesInvoices;
+        $allRelatedTasks = $project->allRelatedTasks;
+        
+        return view('projects.project_information', [
+            'project' => $project, 
+            'projectTags' => $projectTags, 
+            'types' => $types, 
+            'auth_user' => $this->user, 
+            'comments' => $comments, 
+            'customFields' => $customFields,
+            'relatedClients' => $relatedClients,
+            'projectEstimatesInvoices' => $projectEstimatesInvoices,
+            'allRelatedTasks' => $allRelatedTasks
+        ]);
+    }
+    
+    public function showWithAllRelations($id)
+    {
+        $project = Project::with([
+            'status', 
+            'priority', 
+            'users', 
+            'clients', 
+            'contracts',
+            'contracts.client',
+            'contracts.estimatesInvoices',
+            'contracts.quantities',
+            'contracts.approvals',
+            'contracts.amendments',
+            'contracts.journalEntries',
+            'tasks',
+            'tasks.status',
+            'tasks.priority',
+            'tasks.users',
+            'tasks.contract', // New relationship
+            'milestones',
+            'tags',
+            'comments',
+            'notificationsForProject',
+            'favorites',
+            'pinned'
+        ])->findOrFail($id);
+        
+        $projectTags = $project->tags;
+        $types = getControllerNames();
+        $comments = $project->comments;
+        $customFields = CustomField::where('module', 'project')->get();
+        
+        // Load additional related data through enhanced relationships
+        $relatedClients = $project->allRelatedClients;
+        $projectEstimatesInvoices = $project->projectEstimatesInvoices;
+        $allRelatedTasks = $project->allRelatedTasks;
+        
+        return view('projects.project_information', [
+            'project' => $project, 
+            'projectTags' => $projectTags, 
+            'types' => $types, 
+            'auth_user' => $this->user, 
+            'comments' => $comments, 
+            'customFields' => $customFields,
+            'relatedClients' => $relatedClients,
+            'projectEstimatesInvoices' => $projectEstimatesInvoices,
+            'allRelatedTasks' => $allRelatedTasks
+        ]);
+    }
+    
+    public function getWithAllRelations($projectId)
+    {
+        $project = Project::with([
+            'status', 
+            'priority', 
+            'users', 
+            'clients', 
+            'contracts',
+            'contracts.client',
+            'contracts.estimatesInvoices',
+            'contracts.quantities',
+            'contracts.approvals',
+            'contracts.amendments',
+            'contracts.journalEntries',
+            'tasks',
+            'tasks.status',
+            'tasks.priority',
+            'tasks.users',
+            'tasks.contract', // New relationship
+            'milestones',
+            'tags',
+            'comments',
+            'notificationsForProject',
+            'favorites',
+            'pinned',
+            'customFieldValues'
+        ])->findOrFail($projectId);
+        
+        $project->budget = format_currency($project->budget, false, false);
+        $users = $project->users;
+        $clients = $project->clients;
+        $tags = $project->tags;
+        $workspace_users = $this->workspace->users;
+        $workspace_clients = $this->workspace->clients;
+        
+        // Prepare custom field values for API response
+        $customFields = CustomField::where('module', 'project')->get();
+        
+        // Prepare custom field values for the view
+        $customFieldValues = [];
+        foreach ($project->customFieldValues as $fieldValue) {
+            $customFieldValues[$fieldValue->custom_field_id] = $fieldValue->value;
+        }
+
+        return response()->json([
+            'error' => false,
+            'project' => $project,
+            'users' => $users,
+            'clients' => $clients,
+            'workspace_users' => $workspace_users,
+            'workspace_clients' => $workspace_clients,
+            'tags' => $tags,
+            'customFields' => $customFields,
+            'customFieldValues' => $customFieldValues
+        ]);
     }
     public function get($projectId)
     {
-        $project = Project::with(['status', 'priority'])->findOrFail($projectId);
+        $project = Project::with([
+            'status', 
+            'priority', 
+            'users', 
+            'clients', 
+            'contracts',
+            'contracts.client',
+            'contracts.estimatesInvoices',
+            'contracts.quantities',
+            'contracts.approvals',
+            'contracts.amendments',
+            'contracts.journalEntries',
+            'tasks',
+            'tasks.status',
+            'tasks.priority',
+            'tasks.users',
+            'tasks.contract', // New relationship
+            'milestones',
+            'tags',
+            'comments',
+            'notificationsForProject',
+            'favorites',
+            'pinned',
+            'customFieldValues'
+        ])->findOrFail($projectId);
+        
         $project->budget = format_currency($project->budget, false, false);
-        $users = $project->users()->get();
-        $clients = $project->clients()->get();
-        $tags = $project->tags()->get();
+        $users = $project->users;
+        $clients = $project->clients;
+        $tags = $project->tags;
         $workspace_users = $this->workspace->users;
         $workspace_clients = $this->workspace->clients;
-        $project->load("customFieldValues");
+        
         // Prepare custom field values for API response
         $customFields = CustomField::where('module', 'project')->get();
-        // dd($project->customFieldValues);
+        
         // Prepare custom field values for the view
         $customFieldValues = [];
         foreach ($project->customFieldValues as $fieldValue) {
@@ -760,6 +949,10 @@ class ProjectsController extends Controller
                 'note' => $request->input('note'),
                 'enable_tasks_time_entries' => $request->input('enable_tasks_time_entries', false),
             ];
+            
+            // Set required status field (in addition to status_id)
+            $statusTitle = DB::table('statuses')->where('id', $formFieldsToUpdate['status_id'])->value('title') ?? 'Pending';
+            $formFieldsToUpdate['status'] = $statusTitle;
             // Check if the status has changed
             if ($currentStatusId != $request->input('status_id')) {
                 $status = Status::findOrFail($request->input('status_id'));
@@ -1085,7 +1278,7 @@ class ProjectsController extends Controller
                         // Determine if the option should be disabled
                         $disabled = canSetStatus($status) ? '' : 'disabled';
                         // Render the option with appropriate attributes
-                        $selected = $project->status_id == $status->id ? 'selected' : '';
+                       $selected = $project->statusRelation && $project->statusRelation->id == $status->id ? 'selected' : '';
                         $statusOptions .= "<option value='{$status->id}' class='badge bg-label-$status->color' $selected $disabled>$status->title</option>";
                     }
                     $priorityOptions = "<option value='' class='badge bg-label-secondary'>-</option>";
@@ -1176,7 +1369,7 @@ class ProjectsController extends Controller
                         'end_date' => format_date($project->end_date),
                         'budget' => !empty($project->budget) && $project->budget !== null ? format_currency($project->budget) : '-',
                         'status_id' => "<div class='d-flex align-items-center'>
-                            <select class='form-select form-select-sm select-bg-label-" . ($project->status && is_object($project->status) ? $project->status->color : 'secondary') . " fixed-width-select' id='statusSelect' data-id='{$project->id}' data-original-status-id='" . ($project->status && is_object($project->status) ? $project->status->id : '') . "' data-original-color-class='select-bg-label-" . ($project->status && is_object($project->status) ? $project->status->color : 'secondary') . "'" . ($isHome ? ' data-reload="true"' : '') . ">
+                            <select class='form-select form-select-sm select-bg-label-" . ($project->statusRelation && is_object($project->statusRelation) ? $project->statusRelation->color : 'secondary') . " fixed-width-select' id='statusSelect' data-id='{$project->id}' data-original-status-id='" . ($project->statusRelation && is_object($project->statusRelation) ? $project->statusRelation->id : '') . "' data-original-color-class='select-bg-label-" . ($project->statusRelation && is_object($project->statusRelation) ? $project->statusRelation->color : 'secondary') . "'" . ($isHome ? ' data-reload="true"' : '') . ">
                                 {$statusOptions}
                             </select>
                             " . ($project->note ?
@@ -2724,8 +2917,8 @@ class ProjectsController extends Controller
             if (canSetStatus($status)) {
                 $project = Project::findOrFail($id);
                 $oldStatus = $project->status_id;
-                if ($project->status->id != $statusId) {
-                    $currentStatus = $project->status->title;
+                if ($project->status && $project->status->id != $statusId) {
+                    $currentStatus = $project->status ? $project->status->title : 'N/A';
                     $project->status_id = $statusId;
                     $project->note = $request->note;
                     $oldStatus = Status::findOrFail($oldStatus);
@@ -2740,7 +2933,7 @@ class ProjectsController extends Controller
                     if ($project->save()) {
                         // Reload the project to get updated status information
                         $project = $project->fresh();
-                        $newStatus = $project->status->title;
+                        $newStatus = $project->status ? $project->status->title : 'N/A';
                         $notification_data = [
                             'type' => 'project_status_updation',
                             'type_id' => $id,
@@ -2785,10 +2978,18 @@ class ProjectsController extends Controller
         } catch (ValidationException $e) {
             return formatApiValidationError($isApi, $e->errors());
         } catch (\Exception $e) {
-            // Handle any unexpected errors
+            // Log the actual exception with details for debugging
+            Log::error('Project status update failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Return detailed error message for debugging
             return response()->json([
                 'error' => true,
-                'message' => 'Status couldn\'t be updated.'
+                'message' => 'Status couldn\'t be updated: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -3994,7 +4195,7 @@ class ProjectsController extends Controller
         $events = $projects->map(function ($project) {
             $backgroundColor = '#007bff';
             // Set the background color based on the task status
-            switch ($project->status->color) {
+            switch ($project->status ? $project->status->color : 'secondary') {
                 case 'primary':
                     $backgroundColor = '#9bafff'; // Lighter primary blue
                     break;
@@ -4150,4 +4351,136 @@ class ProjectsController extends Controller
             ], 500);
         }
     }
-}
+
+    /**
+     * Generate PDF for a project
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePdf($id)
+    {
+        try {
+            $project = Project::findOrFail($id);
+            
+            // Check if user has permission to view this project
+            if (!isAdminOrHasAllDataAccess() && !$this->user->projects()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to project.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            return $pdfService->generateProjectPdf($project);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Project not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate and download PDF for a project
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $project = Project::findOrFail($id);
+            
+            // Check if user has permission to view this project
+            if (!isAdminOrHasAllDataAccess() && !$this->user->projects()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to project.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            $filename = 'project-' . $project->id . '-' . str_slug($project->title) . '.pdf';
+            
+            return $pdfService->streamPdf('pdf.projects.template', [
+                'project' => $project,
+                'tasks' => $project->tasks ?? [],
+                'users' => $project->users ?? [],
+                'clients' => $project->clients ?? [],
+            ], $filename, false); // false = download attachment
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Project not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate bulk PDFs for multiple projects
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'integer|exists:projects,id'
+            ]);
+            
+            $ids = $validatedData['ids'];
+            $projects = Project::whereIn('id', $ids)->get();
+            
+            // Check permissions for each project
+            if (!isAdminOrHasAllDataAccess()) {
+                $accessibleIds = $this->user->projects()->whereIn('id', $ids)->pluck('id');
+                $projects = $projects->filter(function($project) use ($accessibleIds) {
+                    return $accessibleIds->contains($project->id);
+                });
+            }
+            
+            if ($projects->isEmpty()) {
+                return response()->json(['error' => true, 'message' => 'No accessible projects found.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            // Generate combined report
+            $reportData = [
+                'title' => 'Projects Report',
+                'report_data' => [
+                    'projects' => $projects,
+                    'total_count' => $projects->count(),
+                    'total_tasks' => $projects->sum('tasks_count'),
+                    'generated_date' => now()->format('Y-m-d H:i:s')
+                ]
+            ];
+            
+            return $pdfService->generateReportPdf('Projects Report', $reportData, 'pdf.reports.custom');
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating bulk PDF: ' . $e->getMessage()], 500);
+        }
+    }
+    
+    public function loadClientsForModal()
+    {
+        try {
+            $clients = $this->workspace->clients ?? collect();
+            
+            return response()->json([
+                'success' => true,
+                'clients' => $clients->map(function($client) {
+                    return [
+                        'id' => $client->id,
+                        'name' => $client->first_name . ' ' . $client->last_name
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+}    

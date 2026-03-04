@@ -42,14 +42,15 @@ class YemeniContractDataSeeder extends Seeder
     
     private function ensureBasicDataExists()
     {
-        // التأكد من وجود مساحة عمل
-        if (Workspace::count() == 0) {
-            Workspace::create([
-                'title' => 'شركة البناء اليمنية',
+        // التأكد من وجود مساحة عمل ID 1
+        $workspace = Workspace::updateOrCreate(
+            ['id' => 1],
+            [
+                'title' => 'الشركة العقارية الحديثة',
                 'user_id' => 1,
                 'is_primary' => 1
-            ]);
-        }
+            ]
+        );
         
         // التأكد من وجود عميل
         if (Client::count() == 0) {

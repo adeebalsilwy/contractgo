@@ -98,13 +98,13 @@ class ContractAmendmentsController extends Controller
             foreach ($amendments->items() as $amendment) {
                 $rows[] = [
                     'id' => $amendment->id,
-                    'contract_title' => $amendment->contract->title ?? 'N/A',
+                    'contract_title' => $amendment->contract ? $amendment->contract->title : 'N/A',
                     'contract_id' => $amendment->contract_id,
                     'amendment_type' => $this->getAmendmentTypeLabel($amendment->amendment_type),
                     'request_reason' => $amendment->request_reason,
                     'original_value' => $this->formatValue($amendment->original_price, $amendment->original_quantity),
                     'new_value' => $this->formatValue($amendment->new_price, $amendment->new_quantity),
-                    'requested_by' => $amendment->requestedBy->first_name . ' ' . $amendment->requestedBy->last_name,
+                    'requested_by' => $amendment->requestedBy ? $amendment->requestedBy->first_name . ' ' . $amendment->requestedBy->last_name : 'N/A',
                     'status' => $this->getStatusBadge($amendment->status),
                     'requested_at' => format_date($amendment->created_at, true),
                     'actions' => $this->getActionButtons($amendment)
@@ -255,7 +255,8 @@ class ContractAmendmentsController extends Controller
      */
     public function show(ContractAmendment $amendment)
     {
-        $amendment->load(['contract', 'requestedBy', 'approvedBy', 'signedBy']);
+        // Load relationships with error handling
+        $amendment->loadMissing(['contract', 'requestedBy', 'approvedBy', 'signedBy']);
 
         return view('contract-amendments.show', compact('amendment'));
     }
@@ -265,6 +266,9 @@ class ContractAmendmentsController extends Controller
      */
     public function edit(ContractAmendment $amendment)
     {
+        // Load relationships to ensure they're available
+        $amendment->loadMissing(['contract', 'requestedBy', 'approvedBy', 'signedBy']);
+
         // Check if user has permission to approve amendments
         if (!Auth::user()->can('approve', $amendment)) {
             abort(403, 'غير مصرح لك بتعديل حالة طلب التعديل هذا.');
@@ -340,6 +344,12 @@ class ContractAmendmentsController extends Controller
         // Update the original contract with the new values from the amendment
         $contract = $amendment->contract;
         
+        // Ensure the contract exists before proceeding
+        if (!$contract) {
+            \Log::error("Contract not found for amendment ID: {$amendment->id}");
+            return;
+        }
+
         // Update contract fields based on the amendment type
         switch ($amendment->amendment_type) {
             case 'price':

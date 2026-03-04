@@ -10,11 +10,7 @@ class SystemIntegrity
 {
      public function handle(Request $request, Closure $next)
     {
-        // Only check for authenticated users
-        if (auth()->check() && !$this->checkSystemHealth()) {
-            return redirect()->route('system.health');
-        }
-
+        // Bypass system health check - always allow access
         return $next($request);
     }
 

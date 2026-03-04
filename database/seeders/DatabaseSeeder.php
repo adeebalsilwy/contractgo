@@ -20,31 +20,43 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
+            // Languages first
+            LanguageSeeder::class,
             RolesAndPermissionsSeeder::class,
-            // Yemeni general settings first
-            YemeniGeneralSettingsSeeder::class,
-            // Yemeni seeders first to establish relationships
-            YemeniUsersSeeder::class,
-            YemeniClientsSeeder::class,
-            YemeniProjectsSeeder::class,
-            // Now other seeders that might depend on basic data
-            SuperAdminSeeder::class,
+            // Basic data seeders first
             StatusSeeder::class,
             PrioritySeeder::class,
             TagSeeder::class,
             UnitsSeeder::class,
-            PaymentMethodsSeeder::class,
+            // Create single workspace first
+            YemeniSingleWorkspaceSeeder::class,
+            // Contract types after workspace
             YemeniContractTypesSeeder::class,
+            // Payment methods after workspace
+            PaymentMethodsSeeder::class,
+            // Yemeni general settings
+            YemeniGeneralSettingsSeeder::class,
+            // Create the main 5 projects and 10 contracts with workflow (includes professions)
+            ModernRealEstateCompanySeeder::class,
+            // Yemeni seeders (now that professions exist)
+            YemeniUsersSeeder::class,
+            YemeniClientsSeeder::class,
+            // Verify projects exist
+            YemeniProjectsSeeder::class,
+            // Verify contracts exist
             YemeniContractsSeeder::class,
-            YemeniContractQuantitiesSeeder::class,
-            YemeniContractApprovalsSeeder::class,
-            YemeniContractAmendmentsSeeder::class,
-            YemeniJournalEntriesSeeder::class,
+            // Other seeders
+            SuperAdminSeeder::class,
             // Add our new seeders
             ItemPricingSeeder::class,
             ContractQuantitySeeder::class,
             ComprehensiveItemPricingSeeder::class,
             ContractTypePermissionSeeder::class,
+            YemeniExtractsSeeder::class,
+            ContractObligationsSeeder::class,
+            // Skip problematic workflow seeders for now
+            // CompleteWorkflowSeeder::class,
+            // WorkflowTestDataSeeder::class,
         ]);
     }
 }

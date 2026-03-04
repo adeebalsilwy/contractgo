@@ -41,6 +41,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\Language::class,
             \App\Http\Middleware\AutoWorkspaceAssignment::class,
+            \App\Http\Middleware\AdminFullAccessMiddleware::class,
         ],
 
         'api' => [
@@ -86,5 +87,6 @@ class Kernel extends HttpKernel
         'validate.upload.media' => \App\Http\Middleware\ValidateUploadMedia::class,
         'system.check' => \App\Http\Middleware\SystemIntegrity::class,
         'auto.workspace.assignment' => \App\Http\Middleware\AutoWorkspaceAssignment::class,
+        'admin.full.access' => \App\Http\Middleware\AdminFullAccessMiddleware::class,
     ];
 }

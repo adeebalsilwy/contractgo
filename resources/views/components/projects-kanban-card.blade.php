@@ -28,8 +28,8 @@
                             </a>
                         </h5>
                         @if($project->priority)
-                        <span class="badge bg-label-{{ $project->priority->color }}">
-                            {{ $project->priority->title }}
+                        <span class="badge bg-label-{{ $project->priority ? $project->priority->color : 'secondary' }}">
+                            {{ $project->priority ? $project->priority->title : 'N/A' }}
                         </span>
                         @endif
                     </div>

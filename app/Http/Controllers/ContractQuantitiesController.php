@@ -7,6 +7,10 @@ use App\Models\ContractQuantity;
 use App\Models\ContractApproval;
 use App\Models\Workspace;
 use App\Models\User;
+use App\Models\Client;
+use App\Models\Item;
+use App\Models\Unit;
+use App\Models\ContractAmendment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -37,12 +41,44 @@ class ContractQuantitiesController extends Controller
     }
 
     /**
+     * Show the form for creating a new resource without contract ID.
+     */
+    public function createGeneral()
+    {
+        // Check if user is admin or has all data access
+        if (isAdminOrHasAllDataAccess()) {
+            $contracts = Contract::with(['client'])->get();
+        } else {
+            // For non-admin users, only show contracts they have access to (as site supervisor or client)
+            $userId = $this->user->id;
+            $contracts = Contract::with(['client'])
+                ->where(function($query) use ($userId) {
+                    $query->where('site_supervisor_id', $userId)
+                          ->orWhere('client_id', $userId);
+                })
+                ->get();
+        }
+        
+        $clients = $this->workspace->clients;
+        $items = Item::where('workspace_id', $this->workspace->id)->with(['unit', 'profession'])->get();
+        $units = Unit::all(); // Units are typically global
+        
+        return view('contract-quantities.create', compact('contracts', 'clients', 'items', 'units'));
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create($contractId)
     {
-        $contract = Contract::findOrFail($contractId);
-        return view('contract-quantities.create', compact('contract'));
+        $contract = Contract::with(['client'])->findOrFail($contractId);
+        $clients = $this->workspace->clients;
+        $items = Item::where('workspace_id', $this->workspace->id)->with(['unit', 'profession'])->get();
+        $units = Unit::all(); // Units are typically global
+        
+        $contracts = collect([$contract]); // Pass single contract as collection for consistency
+        
+        return view('contract-quantities.create', compact('contract', 'contracts', 'clients', 'items', 'units'));
     }
 
     /**
@@ -53,6 +89,7 @@ class ContractQuantitiesController extends Controller
         try {
             $request->validate([
                 'contract_id' => 'required|exists:contracts,id',
+                'item_id' => 'nullable|exists:items,id',
                 'item_description' => 'required|string|max:255',
                 'requested_quantity' => 'required|numeric|min:0',
                 'unit' => 'required|string|max:50',
@@ -62,10 +99,37 @@ class ContractQuantitiesController extends Controller
                 'supporting_documents.*' => 'file|mimes:pdf,jpg,png,jpeg|max:10240', // Max 10MB per file
             ]);
 
+            $contract = Contract::findOrFail($request->contract_id);
+            
+            // Check if user is authorized to submit quantities for this contract
+            // Allow site supervisor, client (owner), or admin
+            $isAuthorized = isAdminOrHasAllDataAccess() || 
+                           $this->user->id == $contract->site_supervisor_id ||
+                           $this->user->id == $contract->client_id; // Allow client to upload quantities
+            
+            if (!$isAuthorized) {
+                abort(403, 'Unauthorized to submit quantities for this contract');
+            }
+
+            // Handle item selection if provided
+            $itemDescription = $request->item_description;
+            $unit = $request->unit;
+            $unitPrice = $request->unit_price;
+            
+            if ($request->filled('item_id')) {
+                $item = Item::find($request->item_id);
+                if ($item) {
+                    // Use item details if not overridden by form
+                    $itemDescription = $request->item_description ?: $item->title;
+                    $unit = $request->unit ?: ($item->unit->title ?? '');
+                    $unitPrice = $request->unit_price ?: $item->price;
+                }
+            }
+            
             // Calculate total amount if unit price is provided
             $totalAmount = 0;
-            if ($request->filled('unit_price')) {
-                $totalAmount = $request->requested_quantity * $request->unit_price;
+            if ($unitPrice !== null && $request->filled('requested_quantity')) {
+                $totalAmount = $request->requested_quantity * $unitPrice;
             }
 
             // Handle document uploads if any
@@ -80,16 +144,22 @@ class ContractQuantitiesController extends Controller
             $contractQuantity = ContractQuantity::create([
                 'contract_id' => $request->contract_id,
                 'user_id' => $this->user->id,
-                'item_description' => $request->item_description,
+                'item_id' => $request->item_id, // Store the item ID if provided
+                'item_description' => $itemDescription,
                 'requested_quantity' => $request->requested_quantity,
-                'unit' => $request->unit,
-                'unit_price' => $request->unit_price,
+                'unit' => $unit,
+                'unit_price' => $unitPrice,
                 'total_amount' => $totalAmount,
                 'notes' => $request->notes,
                 'supporting_documents' => $documentPaths,
                 'status' => 'pending',
                 'submitted_at' => now(),
             ]);
+
+            // Update contract workflow status
+            if ($contract->workflow_status !== 'approved') {
+                $contract->update(['workflow_status' => 'quantity_approval']);
+            }
 
             Session::flash('message', 'Contract quantity submitted successfully.');
             return response()->json(['error' => false, 'id' => $contractQuantity->id, 'message' => 'Contract quantity submitted successfully.']);
@@ -103,7 +173,7 @@ class ContractQuantitiesController extends Controller
      */
     public function show($id)
     {
-        $contractQuantity = ContractQuantity::with(['contract', 'user'])->findOrFail($id);
+        $contractQuantity = ContractQuantity::with(['contract', 'user', 'approvedRejectedBy'])->findOrFail($id);
         return view('contract-quantities.show', compact('contractQuantity'));
     }
 
@@ -112,9 +182,13 @@ class ContractQuantitiesController extends Controller
      */
     public function edit($id)
     {
-        $contractQuantity = ContractQuantity::findOrFail($id);
+        $contractQuantity = ContractQuantity::with(['contract'])->findOrFail($id);
         $contract = $contractQuantity->contract;
-        return view('contract-quantities.edit', compact('contractQuantity', 'contract'));
+        $clients = $this->workspace->clients;
+        $items = Item::where('workspace_id', $this->workspace->id)->with(['unit', 'profession'])->get();
+        $units = Unit::all(); // Units are typically global
+        
+        return view('contract-quantities.edit', compact('contractQuantity', 'contract', 'clients', 'items', 'units'));
     }
 
     /**
@@ -126,6 +200,7 @@ class ContractQuantitiesController extends Controller
             $contractQuantity = ContractQuantity::findOrFail($id);
 
             $request->validate([
+                'item_id' => 'nullable|exists:items,id',
                 'item_description' => 'required|string|max:255',
                 'requested_quantity' => 'required|numeric|min:0',
                 'unit' => 'required|string|max:50',
@@ -135,10 +210,35 @@ class ContractQuantitiesController extends Controller
                 'supporting_documents.*' => 'file|mimes:pdf,jpg,png,jpeg|max:10240', // Max 10MB per file
             ]);
 
+            // Check if user is authorized to edit this quantity
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contractQuantity->user_id) {
+                abort(403, 'Unauthorized to edit this quantity');
+            }
+
+            // Only allow editing if status is still pending
+            if ($contractQuantity->status !== 'pending') {
+                abort(403, 'Cannot edit quantity after it has been processed');
+            }
+
+            // Handle item selection if provided
+            $itemDescription = $request->item_description;
+            $unit = $request->unit;
+            $unitPrice = $request->unit_price;
+            
+            if ($request->filled('item_id')) {
+                $item = Item::find($request->item_id);
+                if ($item) {
+                    // Use item details if not overridden by form
+                    $itemDescription = $request->item_description ?: $item->title;
+                    $unit = $request->unit ?: ($item->unit->title ?? '');
+                    $unitPrice = $request->unit_price ?: $item->price;
+                }
+            }
+            
             // Calculate total amount if unit price is provided
             $totalAmount = 0;
-            if ($request->filled('unit_price')) {
-                $totalAmount = $request->requested_quantity * $request->unit_price;
+            if ($unitPrice !== null && $request->filled('requested_quantity')) {
+                $totalAmount = $request->requested_quantity * $unitPrice;
             }
 
             // Handle document uploads if any
@@ -151,10 +251,11 @@ class ContractQuantitiesController extends Controller
             }
 
             $contractQuantity->update([
-                'item_description' => $request->item_description,
+                'item_id' => $request->item_id, // Update the item ID if provided
+                'item_description' => $itemDescription,
                 'requested_quantity' => $request->requested_quantity,
-                'unit' => $request->unit,
-                'unit_price' => $request->unit_price,
+                'unit' => $unit,
+                'unit_price' => $unitPrice,
                 'total_amount' => $totalAmount,
                 'notes' => $request->notes,
                 'supporting_documents' => $documentPaths,
@@ -174,6 +275,17 @@ class ContractQuantitiesController extends Controller
     {
         try {
             $contractQuantity = ContractQuantity::findOrFail($id);
+            
+            // Check if user is authorized to delete this quantity
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contractQuantity->user_id) {
+                abort(403, 'Unauthorized to delete this quantity');
+            }
+            
+            // Only allow deletion if status is still pending
+            if ($contractQuantity->status !== 'pending') {
+                abort(403, 'Cannot delete quantity after it has been processed');
+            }
+            
             $contractQuantity->delete();
             
             return response()->json(['error' => false, 'message' => 'Contract quantity deleted successfully.']);
@@ -259,14 +371,17 @@ class ContractQuantitiesController extends Controller
      */
     public function uploadQuantities(Request $request, $contractId)
     {
-        $contract = Contract::findOrFail($contractId);
+        $contract = Contract::with(['client'])->findOrFail($contractId);
+        $clients = $this->workspace->clients;
+        $items = Item::where('workspace_id', $this->workspace->id)->with(['unit', 'profession'])->get();
+        $units = Unit::all(); // Units are typically global
         
         // Check if user is authorized to upload quantities for this contract
         if (!isAdminOrHasAllDataAccess() && $this->user->id != $contract->site_supervisor_id) {
             abort(403, 'Unauthorized to upload quantities for this contract');
         }
 
-        return view('contract-quantities.upload', compact('contract'));
+        return view('contract-quantities.upload', compact('contract', 'clients', 'items', 'units'));
     }
 
     /**
@@ -312,6 +427,11 @@ class ContractQuantitiesController extends Controller
                     'status' => 'pending',
                     'submitted_at' => now(),
                 ]);
+            }
+
+            // Update contract workflow status
+            if ($contract->workflow_status !== 'approved') {
+                $contract->update(['workflow_status' => 'quantity_approval']);
             }
 
             DB::commit();
@@ -363,6 +483,12 @@ class ContractQuantitiesController extends Controller
                 'approved_rejected_at' => now(),
                 'approval_signature' => $request->quantity_approval_signature,
             ]);
+
+            // Update contract workflow status if all quantities are approved
+            $pendingQuantities = $contract->quantities()->where('status', 'pending')->count();
+            if ($pendingQuantities == 0) {
+                $contract->update(['workflow_status' => 'management_review']);
+            }
 
             Session::flash('message', 'Quantity approved successfully.');
             return response()->json(['error' => false, 'message' => 'Quantity approved successfully.']);
@@ -457,6 +583,12 @@ class ContractQuantitiesController extends Controller
                 'approval_signature' => $request->quantity_approval_signature,
             ]);
 
+            // Update contract workflow status if all quantities are approved
+            $pendingQuantities = $contract->quantities()->where('status', 'pending')->count();
+            if ($pendingQuantities == 0) {
+                $contract->update(['workflow_status' => 'management_review']);
+            }
+
             Session::flash('message', 'Quantity modified successfully.');
             return response()->json(['error' => false, 'message' => 'Quantity modified successfully.']);
         } catch (\Exception $e) {
@@ -478,5 +610,127 @@ class ContractQuantitiesController extends Controller
             ->get();
 
         return view('contract-quantities.pending-approval', compact('contractQuantities'));
+    }
+    
+    /**
+     * Create amendment request for a quantity
+     */
+    public function requestAmendment(Request $request, $id)
+    {
+        try {
+            $contractQuantity = ContractQuantity::with('contract')->findOrFail($id);
+            
+            // Check if user is authorized to request amendment for this quantity
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contractQuantity->contract->final_approver_id) {
+                abort(403, 'Unauthorized to request amendment for this quantity');
+            }
+
+            $request->validate([
+                'amendment_reason' => 'required|string|max:1000',
+            ]);
+
+            // Create amendment request
+            $amendment = ContractAmendment::create([
+                'contract_id' => $contractQuantity->contract_id,
+                'amendment_type' => 'quantity_modification',
+                'description' => $request->amendment_reason,
+                'status' => 'pending',
+                'requested_by' => $this->user->id,
+                'requested_at' => now(),
+                'related_model' => 'ContractQuantity',
+                'related_model_id' => $contractQuantity->id,
+            ]);
+
+            // Update contract workflow status
+            $contractQuantity->contract->update([
+                'amendment_requested' => true,
+                'amendment_reason' => $request->amendment_reason,
+                'amendment_requested_at' => now(),
+                'amendment_requested_by' => $this->user->id,
+                'workflow_status' => 'amendment_pending',
+            ]);
+
+            Session::flash('message', 'Amendment request submitted successfully.');
+            return response()->json(['error' => false, 'message' => 'Amendment request submitted successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Approve amendment request for a quantity
+     */
+    public function approveAmendment(Request $request, $id)
+    {
+        try {
+            $amendment = ContractAmendment::findOrFail($id);
+            $contractQuantity = ContractQuantity::find($amendment->related_model_id);
+            
+            if (!$contractQuantity) {
+                throw new \Exception('Related quantity not found');
+            }
+            
+            // Check if user is authorized to approve amendment
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contractQuantity->contract->final_approver_id) {
+                abort(403, 'Unauthorized to approve amendment');
+            }
+
+            $amendment->update([
+                'status' => 'approved',
+                'approved_by' => $this->user->id,
+                'approved_at' => now(),
+            ]);
+
+            // Update contract status
+            $contractQuantity->contract->update([
+                'amendment_approved' => true,
+                'amendment_approved_at' => now(),
+                'amendment_approved_by' => $this->user->id,
+                'workflow_status' => 'quantity_approval', // Go back to quantity approval for the modified quantity
+            ]);
+
+            Session::flash('message', 'Amendment approved successfully.');
+            return response()->json(['error' => false, 'message' => 'Amendment approved successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Reject amendment request for a quantity
+     */
+    public function rejectAmendment(Request $request, $id)
+    {
+        try {
+            $amendment = ContractAmendment::findOrFail($id);
+            $contractQuantity = ContractQuantity::find($amendment->related_model_id);
+            
+            if (!$contractQuantity) {
+                throw new \Exception('Related quantity not found');
+            }
+            
+            // Check if user is authorized to reject amendment
+            if (!isAdminOrHasAllDataAccess() && $this->user->id != $contractQuantity->contract->final_approver_id) {
+                abort(403, 'Unauthorized to reject amendment');
+            }
+
+            $amendment->update([
+                'status' => 'rejected',
+                'rejected_by' => $this->user->id,
+                'rejected_at' => now(),
+                'rejection_reason' => $request->rejection_reason ?? 'No reason provided',
+            ]);
+
+            // Update contract status
+            $contractQuantity->contract->update([
+                'amendment_approved' => false,
+                'workflow_status' => 'approved', // Maintain approved status since amendment was rejected
+            ]);
+
+            Session::flash('message', 'Amendment rejected successfully.');
+            return response()->json(['error' => false, 'message' => 'Amendment rejected successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
     }
 }

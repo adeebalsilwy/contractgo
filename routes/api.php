@@ -125,6 +125,7 @@ Route::middleware(['multiguard', 'custom-verified', 'has_workspace'])->name('api
         Route::delete('/projects/destroy/{id}', [ProjectsController::class, 'destroy'])->middleware(['customcan:delete_projects', 'demo_restriction', 'checkAccess:App\Models\Project,projects,id,projects', 'log.activity']);
         Route::get('/projects/{id}/status-timelines', [ProjectsController::class, 'get_status_timelines_api']);
         Route::get('/projects/{id}/mind-map', [ProjectsController::class, 'getMindMapData'])->middleware(['isApi']);
+        Route::get('/projects/{id}/get-full', [ProjectsController::class, 'getWithAllRelations'])->middleware(['isApi']);
     });
 
     // Milestones

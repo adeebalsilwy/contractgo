@@ -64,7 +64,23 @@
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="value" class="form-label"><?= get_label('value', 'Value') ?> <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="value" name="value" value="{{ old('value', format_currency($contract->value, false, false)) }}" required placeholder="0.00">
+                                    @if($contract->estimatesInvoices->count() > 0)
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light text-muted">Calculated from extracts</span>
+                                            <input type="text" class="form-control bg-light" id="value" name="value" value="{{ format_currency($contract->total_extract_value, false, false) }}" readonly>
+                                            <input type="hidden" name="value" value="{{ $contract->total_extract_value }}">
+                                        </div>
+                                        <div class="form-text text-info mt-1">
+                                            <i class="bx bx-info-circle"></i>
+                                            Contract value is automatically calculated from associated extracts ({{ $contract->estimatesInvoices->count() }} extracts totaling {{ format_currency($contract->total_extract_value) }})
+                                        </div>
+                                    @else
+                                        <input type="text" class="form-control" id="value" name="value" value="{{ old('value', format_currency($contract->value, false, false)) }}" required placeholder="0.00">
+                                        <div class="form-text text-warning mt-1">
+                                            <i class="bx bx-warning"></i>
+                                            No extracts found. Value can be manually entered.
+                                        </div>
+                                    @endif
                                     @error('value')
                                         <div class="text-danger small mt-1">{{ $message }}</div>
                                     @enderror

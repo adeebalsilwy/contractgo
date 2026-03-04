@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4205e617156a6bfaf13c224b7f3f310f",
+    "content-hash": "4d63d7853da45859eb1204224f62a971",
     "packages": [
         {
             "name": "alexusmai/laravel-file-manager",
@@ -2401,6 +2401,69 @@
             "time": "2025-04-04T15:09:55+00:00"
         },
         {
+            "name": "khaled.alshamaa/ar-php",
+            "version": "v6.3.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/khaled-alshamaa/ar-php.git",
+                "reference": "36550a0d805dc50fcede0132cd8b83c80fe1fd6c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/khaled-alshamaa/ar-php/zipball/36550a0d805dc50fcede0132cd8b83c80fe1fd6c",
+                "reference": "36550a0d805dc50fcede0132cd8b83c80fe1fd6c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-calendar": "*",
+                "ext-mbstring": "*",
+                "php": ">=5.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "9.*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ArPHP\\I18N\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Khaled Al-Sham'aa",
+                    "email": "khaled@ar-php.org",
+                    "homepage": "http://www.ar-php.org",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Set of functionalities enable Arabic website developers to serve professional search, present and process Arabic content in PHP",
+            "homepage": "https://github.com/khaled-alshamaa/ar-php",
+            "keywords": [
+                "arabic",
+                "arabic-calendar",
+                "arabic-glyphs",
+                "arabic-numbers",
+                "arabic-segments-identifier",
+                "arabic-sentiment",
+                "arabic-sql-query"
+            ],
+            "support": {
+                "issues": "https://github.com/khaled-alshamaa/ar-php/issues",
+                "source": "https://github.com/khaled-alshamaa/ar-php/tree/v6.3.4"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/khaled-alshamaa",
+                    "type": "github"
+                }
+            ],
+            "time": "2023-04-04T22:05:31+00:00"
+        },
+        {
             "name": "laravel/framework",
             "version": "v11.45.1",
             "source": {
@@ -4639,6 +4702,98 @@
                 }
             ],
             "time": "2025-05-08T08:14:37+00:00"
+        },
+        {
+            "name": "omaralalwi/gpdf",
+            "version": "1.0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/omaralalwi/Gpdf.git",
+                "reference": "16716b86d3e63ed45b1a4b05cf3c499def7ab46c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/omaralalwi/Gpdf/zipball/16716b86d3e63ed45b1a4b05cf3c499def7ab46c",
+                "reference": "16716b86d3e63ed45b1a4b05cf3c499def7ab46c",
+                "shasum": ""
+            },
+            "require": {
+                "aws/aws-sdk-php": "^3.308",
+                "dompdf/dompdf": "^3.0",
+                "khaled.alshamaa/ar-php": "^6.3",
+                "php": "^8.1|^8.2|^8.3"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Gpdf": "Omaralalwi\\Gpdf\\Facade\\Gpdf"
+                    },
+                    "providers": [
+                        "Omaralalwi\\Gpdf\\GpdfServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Omaralalwi\\Gpdf\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "omar alalwi",
+                    "email": "omaralwi2010@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Custom PDF wrapper supporting Arabic language",
+            "homepage": "https://github.com/omaralalwi/gpdf",
+            "keywords": [
+                "Gpdf",
+                "arabic-documents",
+                "arabic-fonts",
+                "arabic-pdf",
+                "arabic-pdf-export",
+                "arabic-pdf-laravel",
+                "arabic-pdf-library",
+                "arabic-pdf-php",
+                "arabic-reports",
+                "arabic-text-pdf",
+                "dompdf-alternative",
+                "generate-pdf-arabic",
+                "laravel-pdf",
+                "laravel-pdf-arabic",
+                "laravel-pdf-generator",
+                "mpdf-alternative",
+                "multi-language-pdf",
+                "pdf-export",
+                "pdf-generation",
+                "pdf-headers-footers",
+                "pdf-s3",
+                "pdf-toolkit",
+                "pdf-watermark",
+                "php-pdf-builder",
+                "php-pdf-library",
+                "right-to-left-pdf",
+                "rtl-pdf",
+                "rtl-support-pdf",
+                "s3-pdf-storage",
+                "store-pdf-s3",
+                "tcpdf-alternative",
+                "utf8-pdf"
+            ],
+            "support": {
+                "issues": "https://github.com/omaralalwi/Gpdf/issues",
+                "source": "https://github.com/omaralalwi/Gpdf/tree/v1.0.7"
+            },
+            "time": "2025-03-14T02:53:36+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",

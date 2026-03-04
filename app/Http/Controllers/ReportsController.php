@@ -287,8 +287,8 @@ class ReportsController extends Controller
                 'description' => $project->description,
                 'start_date' => format_date($project->start_date),
                 'end_date' => format_date($project->end_date),
-                'status' => "<span class='badge bg-label-" . e($project->status->color) . "'>" . e($project->status->title) . "</span>",
-                'priority' => $project->priority ? "<span class='badge bg-label-" . e($project->priority->color) . "'>" . e($project->priority->title) . "</span>" : '-',
+                'status' => "<span class='badge bg-label-" . e($project->status ? $project->status->color : 'secondary') . "'>" . e($project->status ? $project->status->title : 'N/A') . "</span>",
+                'priority' => $project->priority ? "<span class='badge bg-label-" . e($project->priority && $project->priority->color ? $project->priority->color : 'secondary') . "'>" . e($project->priority && $project->priority->title ? $project->priority->title : 'N/A') . "</span>" : '-',
                 'budget' => [
                     'total' => $totalBudget,
                 ],
@@ -595,7 +595,7 @@ class ReportsController extends Controller
                 'description' => $task->description,
                 'start_date' => format_date($task->start_date),
                 'due_date' => format_date($task->due_date),
-                'status' => "<span class='badge bg-label-" . e($task->status->color) . "'>" . e($task->status->title) . "</span>",
+                'status' => "<span class='badge bg-label-" . e($task->status && is_object($task->status) ? $task->status->color : 'secondary') . "'>" . e($task->status && is_object($task->status) ? $task->status->title : 'N/A') . "</span>",
                 'priority' => $task->priority ? "<span class='badge bg-label-" . e($task->priority->color) . "'>" . e($task->priority->title) . "</span>" : '-',
                 'project' => $canManageProjects
                     ? "<a href='" . route('projects.info', ['id' => $task->project->id]) . "' target='_blank'>" . $task->project->title . "</a>"

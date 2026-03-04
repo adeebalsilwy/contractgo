@@ -35,6 +35,11 @@
                         </button>
                     </a>
                 @endif
+                <a href="{{ route('contract-quantities.create') }}">
+                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('create_extract', 'Create Extract') ?>">
+                        <i class='bx bx-calculator'></i> <?= get_label('create_extract', 'Create Extract') ?>
+                    </button>
+                </a>
             </div>
         </div>
 

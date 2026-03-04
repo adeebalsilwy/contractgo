@@ -1125,7 +1125,7 @@ class TasksController extends Controller
                     'clients' => $clientHtml,
                     'start_date' => format_date($task->start_date),
                     'due_date' => format_date($task->due_date),
-                    'status_id' => "<div class='d-flex align-items-center'><select class='form-select form-select-sm select-bg-label-{$task->status->color} fixed-width-select' id='statusSelect' data-id='{$task->id}' data-original-status-id='{$task->status->id}' data-original-color-class='select-bg-label-{$task->status->color}' data-type='task'" . ($isHome ? " data-reload='true'" : "") . ">{$statusOptions}</select>" . ($task->note ?
+                    'status_id' => "<div class='d-flex align-items-center'><select class='form-select form-select-sm select-bg-label-" . ($task->status && is_object($task->status) ? $task->status->color : 'secondary') . " fixed-width-select' id='statusSelect' data-id='{$task->id}' data-original-status-id='" . ($task->status && is_object($task->status) ? $task->status->id : '') . "' data-original-color-class='select-bg-label-" . ($task->status && is_object($task->status) ? $task->status->color : 'secondary') . "' data-type='task'" . ($isHome ? " data-reload='true'" : "") . ">{$statusOptions}</select>" . ($task->note ?
                         "<i class='bx bx-notepad ms-2 text-primary' title='{$task->note}'></i>"
                         : "") . "</div>",
                     'priority_id' => "<select class='form-select form-select-sm select-bg-label-" . ($task->priority ? $task->priority->color : 'secondary') . "' id='prioritySelect' data-id='{$task->id}' data-original-priority-id='" . ($task->priority ? $task->priority->id : '') . "' data-original-color-class='select-bg-label-" . ($task->priority ? $task->priority->color : 'secondary') . "' data-type='task'>{$priorityOptions}</select>",
@@ -1433,11 +1433,11 @@ class TasksController extends Controller
         $status = Status::findOrFail($newStatus);
         if (canSetStatus($status)) {
             $task = Task::findOrFail($id);
-            $current_status = $task->status->title;
+            $current_status = $task->status && is_object($task->status) ? $task->status->title : 'N/A';
             $task->status_id = $newStatus;
             if ($task->save()) {
                 $task->refresh();
-                $new_status = $task->status->title;
+                $new_status = $task->status && is_object($task->status) ? $task->status->title : 'N/A';
                 $notification_data = [
                     'type' => 'task_status_updation',
                     'type_id' => $id,
@@ -1563,8 +1563,8 @@ class TasksController extends Controller
             $status = Status::findOrFail($statusId);
             if (canSetStatus($status)) {
                 $task = Task::findOrFail($id);
-                if ($task->status->id != $statusId) {
-                    $currentStatus = $task->status->title;
+                if ($task->status && is_object($task->status) && $task->status->id != $statusId) {
+                    $currentStatus = $task->status && is_object($task->status) ? $task->status->title : 'N/A';
                     $oldStatus = $task->status_id;
                     $task->status_id = $statusId;
                     $task->note = $request->note;
@@ -1579,7 +1579,7 @@ class TasksController extends Controller
                     ]);
                     if ($task->save()) {
                         $task = $task->fresh();
-                        $newStatus = $task->status->title;
+                        $newStatus = $task->status && is_object($task->status) ? $task->status->title : 'N/A';
                         $notification_data = [
                             'type' => 'task_status_updation',
                             'type_id' => $id,
@@ -2175,7 +2175,7 @@ class TasksController extends Controller
         $events = $tasks->map(function ($task) {
             $backgroundColor = '#007bff';
             // Set the background color based on the task status
-            switch ($task->status->color) {
+            switch ($task->status && is_object($task->status) ? $task->status->color : 'secondary') {
                 case 'primary':
                     $backgroundColor = '#9bafff'; // Lighter primary blue
                     break;
@@ -3015,6 +3015,116 @@ class TasksController extends Controller
                 "error" => true,
                 "message" => "Could not retrieve status timelines."
             ], 500);
+        }
+    }
+
+    /**
+     * Generate PDF for a task
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePdf($id)
+    {
+        try {
+            $task = Task::findOrFail($id);
+            
+            // Check if user has permission to view this task
+            if (!isAdminOrHasAllDataAccess() && !$this->user->tasks()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to task.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            return $pdfService->generateTaskPdf($task);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Task not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate and download PDF for a task
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $task = Task::findOrFail($id);
+            
+            // Check if user has permission to view this task
+            if (!isAdminOrHasAllDataAccess() && !$this->user->tasks()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to task.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            $filename = 'task-' . $task->id . '-' . str_slug($task->title) . '.pdf';
+            
+            return $pdfService->streamPdf('pdf.tasks.template', [
+                'task' => $task,
+                'project' => $task->project ?? null,
+                'users' => $task->users ?? [],
+                'comments' => $task->comments ?? [],
+            ], $filename, false); // false = download attachment
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Task not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate bulk PDFs for multiple tasks
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'integer|exists:tasks,id'
+            ]);
+            
+            $ids = $validatedData['ids'];
+            $tasks = Task::whereIn('id', $ids)->get();
+            
+            // Check permissions for each task
+            if (!isAdminOrHasAllDataAccess()) {
+                $accessibleIds = $this->user->tasks()->whereIn('id', $ids)->pluck('id');
+                $tasks = $tasks->filter(function($task) use ($accessibleIds) {
+                    return $accessibleIds->contains($task->id);
+                });
+            }
+            
+            if ($tasks->isEmpty()) {
+                return response()->json(['error' => true, 'message' => 'No accessible tasks found.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            // Generate combined report
+            $reportData = [
+                'title' => 'Tasks Report',
+                'report_data' => [
+                    'tasks' => $tasks,
+                    'total_count' => $tasks->count(),
+                    'completed_count' => $tasks->where('status_id', 3)->count(), // Assuming status_id 3 is completed
+                    'generated_date' => now()->format('Y-m-d H:i:s')
+                ]
+            ];
+            
+            return $pdfService->generateReportPdf('Tasks Report', $reportData, 'pdf.reports.custom');
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating bulk PDF: ' . $e->getMessage()], 500);
         }
     }
 }

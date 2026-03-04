@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\Language;
 use App\Models\Priority;
 use App\Models\CustomField;
+use App\Services\LoggingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Pagination\Paginator;
@@ -125,6 +126,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PathGenerator::class, CustomPathGenerator::class);
+        
+        // Register the logging service
+        $this->app->singleton('logging', function ($app) {
+            return new LoggingService();
+        });
     }
 
     /**
@@ -499,7 +505,7 @@ class AppServiceProvider extends ServiceProvider
         $icons = [
             '512x512' => [
                 'path' => $logoPath,
-                'sizes' => '512x512',
+                'sizes' => '512x52',
                 'purpose' => 'any'
             ],
         ];

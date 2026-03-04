@@ -23,7 +23,7 @@ class Workspace extends Model
 
     public function clients()
     {
-        return $this->belongsToMany(Client::class);
+        return $this->belongsToMany(Client::class, 'client_workspace', 'workspace_id', 'client_id');
     }
 
     public function getresult()

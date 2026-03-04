@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\EstimatesInvoice;
 use App\Services\DeletionService;
+use App\Services\TemplateService;
 use Illuminate\Support\Facades\DB;
 use LaravelDaily\Invoices\Invoice;
 use App\Http\Controllers\Controller;
@@ -26,7 +27,9 @@ class EstimatesInvoicesController extends Controller
 {
     protected $workspace;
     protected $user;
-    public function __construct()
+    protected $templateService;
+    
+    public function __construct(TemplateService $templateService)
     {
         $this->middleware(function ($request, $next) {
             // fetch session and use it in entire class with constructor
@@ -34,12 +37,102 @@ class EstimatesInvoicesController extends Controller
             $this->user = getAuthenticatedUser();
             return $next($request);
         });
+        
+        $this->templateService = $templateService;
     }
     public function index(Request $request)
     {
         $estimates_invoices = isAdminOrHasAllDataAccess() ? $this->workspace->estimates_invoices() : $this->user->estimates_invoices();
         $estimates_invoices = $estimates_invoices->count();
         return view('estimates-invoices.list', ['estimates_invoices' => $estimates_invoices]);
+    }
+
+    /**
+     * Get statistics for estimates and invoices
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getStats(Request $request)
+    {
+        try {
+            // Get all estimates and invoices
+            $documents = isAdminOrHasAllDataAccess() ? 
+                $this->workspace->estimates_invoices() : 
+                $this->user->estimates_invoices();
+            
+            // Separate extracts (linked to contracts) and standalone invoices
+            $extracts = $documents->where('type', 'estimate')->whereNotNull('contract_id');
+            $standaloneEstimates = $documents->where('type', 'estimate')->whereNull('contract_id');
+            $invoices = $documents->where('type', 'invoice');
+            
+            // Calculate counts
+            $extractsCount = $extracts->count();
+            $estimatesCount = $standaloneEstimates->count();
+            $invoicesCount = $invoices->count();
+            
+            // Calculate pending documents (draft status)
+            $pendingExtracts = $extracts->where('status', 'draft')->count();
+            $pendingEstimates = $standaloneEstimates->where('status', 'draft')->count();
+            $pendingInvoices = $invoices->where('status', 'draft')->count();
+            $pendingDocuments = $pendingExtracts + $pendingEstimates + $pendingInvoices;
+            
+            // Calculate total revenue (only from paid invoices and paid extracts)
+            $paidInvoices = $invoices->whereIn('status', ['partially_paid', 'fully_paid']);
+            $paidExtracts = $extracts->whereIn('status', ['partially_paid', 'fully_paid', 'accepted', 'sent']);
+            $totalRevenue = $paidInvoices->sum('final_total') + $paidExtracts->sum('final_total');
+            
+            // Get status breakdowns for extracts
+            $extractStatuses = [
+                'sent' => $extracts->where('status', 'sent')->count(),
+                'accepted' => $extracts->where('status', 'accepted')->count(),
+                'draft' => $extracts->where('status', 'draft')->count(),
+                'declined' => $extracts->where('status', 'declined')->count(),
+                'expired' => $extracts->where('status', 'expired')->count(),
+                'not_specified' => $extracts->where('status', 'not_specified')->count()
+            ];
+            
+            // Get status breakdowns for invoices
+            $invoiceStatuses = [
+                'partially_paid' => $invoices->where('status', 'partially_paid')->count(),
+                'fully_paid' => $invoices->where('status', 'fully_paid')->count(),
+                'draft' => $invoices->where('status', 'draft')->count(),
+                'cancelled' => $invoices->where('status', 'cancelled')->count(),
+                'due' => $invoices->where('status', 'due')->count(),
+                'not_specified' => $invoices->where('status', 'not_specified')->count()
+            ];
+            
+            // Get status breakdowns for standalone estimates
+            $estimateStatuses = [
+                'sent' => $standaloneEstimates->where('status', 'sent')->count(),
+                'accepted' => $standaloneEstimates->where('status', 'accepted')->count(),
+                'draft' => $standaloneEstimates->where('status', 'draft')->count(),
+                'declined' => $standaloneEstimates->where('status', 'declined')->count(),
+                'expired' => $standaloneEstimates->where('status', 'expired')->count(),
+                'not_specified' => $standaloneEstimates->where('status', 'not_specified')->count()
+            ];
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'extracts' => $extractsCount,
+                    'estimates' => $estimatesCount,
+                    'invoices' => $invoicesCount,
+                    'pending' => $pendingDocuments,
+                    'total_revenue' => $totalRevenue,
+                    'extract_statuses' => $extractStatuses,
+                    'invoice_statuses' => $invoiceStatuses,
+                    'estimate_statuses' => $estimateStatuses,
+                    'total_documents' => $extractsCount + $estimatesCount + $invoicesCount
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching statistics: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function create(Request $request)
@@ -286,6 +379,11 @@ class EstimatesInvoicesController extends Controller
                 $formFields['created_by'] = isClient() ? 'c_' . $this->user->id : 'u_' . $this->user->id;
 
                 if ($res = EstimatesInvoice::create($formFields)) {
+                    // Apply default template to the extract if it's an estimate (extract)
+                    if ($request->type === 'estimate') {
+                        $this->templateService->applyDefaultExtractTemplate($res);
+                    }
+                    
                     // Handle contract linking
                     if ($request->has('contract_id') && $request->contract_id != '') {
                         $res->update(['contract_id' => $request->contract_id]);
@@ -356,31 +454,53 @@ class EstimatesInvoicesController extends Controller
 
     public function list()
     {
-        $search = request('search');
-        $sort = (request('sort')) ? request('sort') : "id";
-        $order = (request('order')) ? request('order') : "DESC";
-        $status = (request('status')) ? request('status') : "";
-        $types = request('types', []);
-        $client_ids = request('client_ids', []);
-        $created_by_user_ids = request('created_by_user_ids', []);
-        $created_by_client_ids = request('created_by_client_ids', []);
-        $date_between_from = request('date_between_from') ?: "";
-        $date_between_to = request('date_between_to') ?: "";
-        $start_date_from = (request('start_date_from')) ? request('start_date_from') : "";
-        $start_date_to = (request('start_date_to')) ? request('start_date_to') : "";
-        $end_date_from = (request('end_date_from')) ? request('end_date_from') : "";
-        $end_date_to = (request('end_date_to')) ? request('end_date_to') : "";
-        $where = ['estimates_invoices.workspace_id' => $this->workspace->id];
+        try {
+            $search = request('search');
+            $sort = (request('sort')) ? request('sort') : "id";
+            $order = (request('order')) ? request('order') : "DESC";
+            $status = (request('status')) ? request('status') : "";
+            $types = (array) request('types', []);
+            $client_ids = (array) request('client_ids', []);
+            $created_by_user_ids = (array) request('created_by_user_ids', []);
+            $created_by_client_ids = (array) request('created_by_client_ids', []);
+            $date_between_from = request('date_between_from') ?: "";
+            $date_between_to = request('date_between_to') ?: "";
+            $start_date_from = (request('start_date_from')) ? request('start_date_from') : "";
+            $start_date_to = (request('start_date_to')) ? request('start_date_to') : "";
+            $end_date_from = (request('end_date_from')) ? request('end_date_from') : "";
+            $end_date_to = (request('end_date_to')) ? request('end_date_to') : "";
+            $where = ['estimates_invoices.workspace_id' => $this->workspace->id];
 
         if ($status != '') {
             $where['estimates_invoices.status'] = $status;
         }
 
-        $estimates_invoices = EstimatesInvoice::select(
-            'estimates_invoices.*',
-            DB::raw('CONCAT(clients.first_name, " ", clients.last_name) AS client_name')
-        )
-            ->leftJoin('clients', 'estimates_invoices.client_id', '=', 'clients.id');
+        // Check if we need to include contract and project data based on request parameters
+        $includeContractProjectData = request()->has('with_contract_data') || request()->has('with_project_data') || request()->has('include_contract_details') || request()->has('enhanced_data');
+        
+        if ($includeContractProjectData) {
+            $estimates_invoices = EstimatesInvoice::select(
+                'estimates_invoices.*',
+                DB::raw('CONCAT(clients.first_name, " ", clients.last_name) AS client_name'),
+                'contracts.title as contract_title',
+                'contracts.value as contract_value',
+                'contracts.start_date as contract_start_date',
+                'contracts.end_date as contract_end_date',
+                'projects.title as project_title',
+                // Use projects.description instead of projects.location since location doesn't exist
+                DB::raw('IFNULL(projects.description, "Location N/A") as project_location'),
+                'projects.id as project_id'
+            )
+                ->leftJoin('clients', 'estimates_invoices.client_id', '=', 'clients.id')
+                ->leftJoin('contracts', 'estimates_invoices.contract_id', '=', 'contracts.id')
+                ->leftJoin('projects', 'contracts.project_id', '=', 'projects.id');
+        } else {
+            $estimates_invoices = EstimatesInvoice::select(
+                'estimates_invoices.*',
+                DB::raw('CONCAT(clients.first_name, " ", clients.last_name) AS client_name')
+            )
+                ->leftJoin('clients', 'estimates_invoices.client_id', '=', 'clients.id');
+        }
 
 
         if (!isAdminOrHasAllDataAccess()) {
@@ -390,8 +510,34 @@ class EstimatesInvoicesController extends Controller
             });
         }
 
+        // Handle document type filtering
         if (!empty($types)) {
             $estimates_invoices->whereIn('type', $types);
+        }
+
+        // Handle document type filtering with better logic
+        $isExtractFilter = request('is_extract', null);
+        $requestedType = request('type', '');
+        
+        // Priority: is_extract filter takes precedence over type filter
+        if ($isExtractFilter !== null) {
+            if ($isExtractFilter) {
+                // Show only extracts (estimates linked to contracts)
+                $estimates_invoices->where('type', 'estimate')
+                                  ->whereNotNull('contract_id');
+            } else {
+                // Show only standalone documents (invoices + standalone estimates)
+                $estimates_invoices->where(function($query) {
+                    $query->where('type', 'invoice')
+                          ->orWhere(function($subQuery) {
+                              $subQuery->where('type', 'estimate')
+                                      ->whereNull('contract_id');
+                          });
+                });
+            }
+        } elseif (!empty($requestedType)) {
+            // Apply type filter only if is_extract is not specified
+            $estimates_invoices->where('type', $requestedType);
         }
 
         if (!empty($client_ids)) {
@@ -487,9 +633,15 @@ class EstimatesInvoicesController extends Controller
                     '<i class="bx bxs-file-pdf text-secondary mx-2"></i>' .
                     '</a>';
 
+                // Determine document type for display
+                $displayType = ucfirst($estimates_invoice->type);
+                if ($estimates_invoice->type === 'estimate' && $estimates_invoice->contract_id) {
+                    $displayType = get_label('extract', 'Extract');
+                }
+
                 return [
                     'id' => $estimates_invoice->id,
-                    'type' => ucfirst($estimates_invoice->type),
+                    'type' => $displayType,
                     'client' => formatClientHtml($estimates_invoice->client),
                     'total' => format_currency($estimates_invoice->total),
                     'tax_amount' => format_currency($estimates_invoice->tax_amount),
@@ -509,6 +661,15 @@ class EstimatesInvoicesController extends Controller
             "rows" => $estimates_invoices->items(),
             "total" => $total,
         ]);
+        } catch (\Exception $e) {
+            \Log::error('EstimatesInvoicesController@list error: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => 'An error occurred while fetching estimates/invoices',
+                'rows' => [],
+                'total' => 0
+            ], 500);
+        }
     }
 
     public function edit(Request $request, $id)
@@ -812,8 +973,23 @@ class EstimatesInvoicesController extends Controller
 
     public function view(Request $request, $id)
     {
-        $estimate_invoice = EstimatesInvoice::findOrFail($id);
+        $estimate_invoice = EstimatesInvoice::with(['client', 'items.unit', 'items.tax', 'payments.paymentMethod'])->findOrFail($id);
 
+        // Load related contract and project details if this is an extract
+        $relatedContract = null;
+        $relatedProject = null;
+        $contractor = null;
+        $engineer = null;
+        
+        if ($estimate_invoice->contract_id) {
+            $relatedContract = \App\Models\Contract::with(['project', 'client'])->find($estimate_invoice->contract_id);
+            if ($relatedContract) {
+                $relatedProject = $relatedContract->project;
+                $contractor = $relatedContract->client;
+                // You might want to fetch the engineer from project or contract
+                $engineer = null; // Implement engineer fetching logic if needed
+            }
+        }
 
         // The ID corresponds to a user
         $creator = User::find(substr($estimate_invoice->created_by, 2)); // Remove the 'u_' prefix
@@ -847,16 +1023,17 @@ class EstimatesInvoicesController extends Controller
             $statusBadge = '<span class="badge bg-danger">' . get_label('due', 'Due') . '</span>';
         }
 
-
-
         $estimate_invoice->status = $statusBadge;
+        
+        // Pass related data to views
+        $viewData = compact('estimate_invoice', 'relatedContract', 'relatedProject', 'contractor', 'engineer');
         
         // If this is an estimate, show the specialized estimate view
         if ($estimate_invoice->type === 'estimate') {
-            return view('estimates.show', compact('estimate_invoice'));
+            return view('estimates.show', $viewData);
         }
         
-        return view('estimates-invoices.view', compact('estimate_invoice'));
+        return view('estimates-invoices.view', $viewData);
     }
     
     public function showEstimate($id)
@@ -973,7 +1150,7 @@ class EstimatesInvoicesController extends Controller
             'company_title_en' => 'Modern Al-Aqariah Company Limited',
             'engineer_name' => $engineer ? $engineer->first_name . ' ' . $engineer->last_name : '—',
             'contractor_name' => $contractor ? $contractor->first_name . ' ' . $contractor->last_name : 'محمد علي عبده وهبان',
-            'project_location' => $project ? $project->location : 'الجمهورية اليمنية - عدن - صيرة',
+            'project_location' => $project ? $project->description : 'الجمهورية اليمنية - عدن - صيرة',
             'project_name' => $project ? $project->name : 'مشروع بنك عدن الأول الاسلامي - كريتر',
             'net_value' => number_format($netValue, 2),
             'estimate_number' => $estimate_invoice->id,
@@ -1078,6 +1255,42 @@ class EstimatesInvoicesController extends Controller
             Session::flash('message', ucfirst($res->type) . ' duplicated successfully.');
         }
         return response()->json(['error' => false, 'message' => ucfirst($res->type) . ' duplicated successfully.', 'id' => $id, 'type' => $res->type]);
+    }
+
+    /**
+     * Display extract mind map
+     */
+    public function mind_map($id)
+    {
+        $estimate_invoice = EstimatesInvoice::with([
+            'client',
+            'contract',
+            'contract.project',
+            'contract.client',
+            'contract.contract_type',
+            'items',
+            'payments',
+            'payments.paymentMethod'
+        ])->findOrFail($id);
+        
+        // Load related data counts
+        $estimate_invoice->loadCount([
+            'items',
+            'payments'
+        ]);
+        
+        // Get related extracts if this is linked to a contract
+        $relatedExtracts = collect();
+        if ($estimate_invoice->contract_id) {
+            $relatedExtracts = EstimatesInvoice::where('contract_id', $estimate_invoice->contract_id)
+                ->where('id', '!=', $id)
+                ->with(['client'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        }
+        
+        return view('estimates-invoices.mind_map', compact('estimate_invoice', 'relatedExtracts'));
     }
     /**
      * List or search estimate invoices.
@@ -1255,5 +1468,142 @@ class EstimatesInvoicesController extends Controller
                 'data' => $data
             ]
         );
+    }
+
+    /**
+     * Generate PDF for an estimate/invoice
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePdf($id)
+    {
+        try {
+            $estimate = EstimatesInvoice::findOrFail($id);
+            
+            // Check if user has permission to view this estimate
+            if (!isAdminOrHasAllDataAccess() && !$this->user->estimates_invoices()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to estimate.'], 403);
+            }
+            
+            // Use Arabic PDF service for better Arabic support
+            $arabicPdfService = app('App\\Services\\ArabicPdfService');
+            
+            return $arabicPdfService->generateEstimatePdf($estimate);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Estimate not found.'], 404);
+        } catch (\Exception $e) {
+            \Log::error('EstimatesInvoicesController@generatePdf error: ' . $e->getMessage());
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate and download PDF for an estimate/invoice
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $estimate = EstimatesInvoice::findOrFail($id);
+            
+            // Check if user has permission to view this estimate
+            if (!isAdminOrHasAllDataAccess() && !$this->user->estimates_invoices()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to estimate.'], 403);
+            }
+            
+            // Use Arabic PDF service for better Arabic support
+            $arabicPdfService = app('App\\Services\\ArabicPdfService');
+            
+            $type = $estimate->type ?? 'estimate';
+            $filename = $type . '-' . $estimate->id . '.pdf';
+            
+            return $arabicPdfService->generateEstimatePdf($estimate);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Estimate not found.'], 404);
+        } catch (\Exception $e) {
+            \Log::error('EstimatesInvoicesController@downloadPdf error: ' . $e->getMessage());
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate bulk PDFs for multiple estimates/invoices
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'integer|exists:estimates_invoices,id'
+            ]);
+            
+            $ids = $validatedData['ids'];
+            $estimates = EstimatesInvoice::whereIn('id', $ids)->get();
+            
+            // Check permissions for each estimate
+            if (!isAdminOrHasAllDataAccess()) {
+                $accessibleIds = $this->user->estimates_invoices()->whereIn('id', $ids)->pluck('id');
+                $estimates = $estimates->filter(function($estimate) use ($accessibleIds) {
+                    return $accessibleIds->contains($estimate->id);
+                });
+            }
+            
+            if ($estimates->isEmpty()) {
+                return response()->json(['error' => true, 'message' => 'No accessible estimates found.'], 403);
+            }
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            // Generate combined report
+            $reportData = [
+                'title' => 'Estimates & Invoices Report',
+                'report_data' => [
+                    'estimates' => $estimates,
+                    'total_count' => $estimates->count(),
+                    'total_value' => $estimates->sum('total'),
+                    'generated_date' => now()->format('Y-m-d H:i:s')
+                ]
+            ];
+            
+            return $pdfService->generateReportPdf('Estimates & Invoices Report', $reportData, 'pdf.reports.custom');
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating bulk PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Load clients for modal views
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function loadClientsForModal()
+    {
+        try {
+            $clients = $this->workspace->clients ?? collect();
+            
+            return response()->json([
+                'success' => true,
+                'clients' => $clients->map(function($client) {
+                    return [
+                        'id' => $client->id,
+                        'name' => $client->first_name . ' ' . $client->last_name
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

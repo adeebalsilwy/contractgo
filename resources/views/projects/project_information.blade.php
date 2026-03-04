@@ -92,12 +92,12 @@
                                 <div class="col-md-{{$project->note ? '7' : '6'}} mb-3">
                                     <label class="form-label"><?= get_label('status', 'Status') ?></label>
                                     <div class="d-flex align-items-center">
-                                        <select class="form-select form-select-sm select-bg-label-{{$project->status->color}}" id="statusSelect" data-id="{{ $project->id }}" data-original-status-id="{{$project->status->id}}" data-original-color-class="select-bg-label-{{$project->status->color}}">
+                                        <select class="form-select form-select-sm select-bg-label-{{ $project->status && is_object($project->status) && isset($project->status->color) ? $project->status->color : 'secondary' }}" id="statusSelect" data-id="{{ $project->id }}" data-original-status-id="{{ $project->status && is_object($project->status) ? $project->status->id : '' }}" data-original-color-class="select-bg-label-{{ $project->status && is_object($project->status) && isset($project->status->color) ? $project->status->color : 'secondary' }}">
                                             @foreach($statuses as $status)
                                             @php
-                                            $disabled = canSetStatus($status) ? '' : 'disabled';
+                                            $disabled = $project->status && is_object($project->status) && canSetStatus($status) ? '' : 'disabled';
                                             @endphp
-                                            <option value="{{ $status->id }}" class="badge bg-label-{{ $status->color }}" {{ $project->status->id == $status->id ? 'selected' : '' }} {{ $disabled }}>
+                                            <option value="{{ $status->id }}" class="badge bg-label-{{ $status->color }}" {{ $project->status && is_object($project->status) && $project->status->id == $status->id ? 'selected' : '' }} {{ $disabled }}>
                                                 {{ $status->title }}
                                             </option>
                                             @endforeach
@@ -109,10 +109,10 @@
                                 </div>
                                 <div class="col-md-{{$project->note ? '5' : '6'}} mb-3">
                                     <label for="prioritySelect" class="form-label"><?= get_label('priority', 'Priority') ?></label>
-                                    <select class="form-select form-select-sm select-bg-label-{{$project->priority?$project->priority->color:'secondary'}}" id="prioritySelect" data-id="{{ $project->id }}" data-original-priority-id="{{$project->priority ? $project->priority->id : ''}}" data-original-color-class="select-bg-label-{{$project->priority?$project->priority->color:'secondary'}}">
+                                    <select class="form-select form-select-sm select-bg-label-{{ $project->priority && is_object($project->priority) && isset($project->priority->color) ? $project->priority->color : 'secondary' }}" id="prioritySelect" data-id="{{ $project->id }}" data-original-priority-id="{{ $project->priority && is_object($project->priority) ? $project->priority->id : '' }}" data-original-color-class="select-bg-label-{{ $project->priority && is_object($project->priority) && isset($project->priority->color) ? $project->priority->color : 'secondary' }}">
                                         <option value="" class="badge bg-label-secondary">-</option>
                                         @foreach($priorities as $priority)
-                                        <option value="{{$priority->id}}" class="badge bg-label-{{$priority->color}}" {{ $project->priority && $project->priority->id == $priority->id ? 'selected' : '' }}>
+                                        <option value="{{ $priority->id }}" class="badge bg-label-{{ $priority->color }}" {{ $project->priority && is_object($project->priority) && $project->priority->id == $priority->id ? 'selected' : '' }}>
                                             {{$priority->title}}
                                         </option>
                                         @endforeach
@@ -168,12 +168,12 @@
                                         <?php $status = $statuses->where('id', $statusId)->first(); ?>
                                         <li class="d-flex mb-4 pb-1">
                                             <div class="avatar flex-shrink-0 me-3">
-                                                <span class="avatar-initial rounded bg-label-{{$status->color}}"><i class="bx bx-task"></i></span>
+                                                <span class="avatar-initial rounded bg-label-{{ $status && is_object($status) && isset($status->color) ? $status->color : 'secondary' }}"><i class="bx bx-task"></i></span>
                                             </div>
                                             <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                                                 <div class="me-2">
-                                                    <a href="{{ url(getUserPreferences('tasks', 'default_view')) }}?project={{ $project->id }}&status={{ $status->id }}">
-                                                        <h6 class="mb-0">{{ $status->title }}</h6>
+                                                    <a href="{{ url(getUserPreferences('tasks', 'default_view')) }}?project={{ $project->id }}&status={{ $status && $status->id ? $status->id : '' }}">
+                                                        <h6 class="mb-0">{{ $status && $status->title ? $status->title : 'N/A' }}</h6>
                                                     </a>
                                                 </div>
                                                 <div class="user-progress">

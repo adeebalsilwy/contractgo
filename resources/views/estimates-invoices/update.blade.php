@@ -99,7 +99,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for=""> <?= get_label('note', 'Note') ?></label>
-                        <textarea class="form-control" placeholder="<?= get_label('please_enter_note_if_any', 'Please enter note if any') ?>" name="note">{{$estimate_invoice->note??''}}</textarea>
+                        <textarea class="form-control tinymce-editor" id="note_editor" placeholder="<?= get_label('please_enter_note_if_any', 'Please enter note if any') ?>" name="note">{{$estimate_invoice->note??''}}</textarea>
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="nameBasic" class="form-label"><?= get_label('from_date', 'From date') ?> <span class="asterisk">*</span></label>
@@ -111,7 +111,7 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for=""> <?= get_label('personal_note', 'Personal note') ?></label>
-                        <textarea class="form-control" placeholder="<?= get_label('please_enter_personal_note_if_any', 'Please enter personal note if any') ?>" name="personal_note">{{$estimate_invoice->personal_note??''}}</textarea>
+                        <textarea class="form-control tinymce-editor" id="personal_note_editor" placeholder="<?= get_label('please_enter_personal_note_if_any', 'Please enter personal note if any') ?>" name="personal_note">{{$estimate_invoice->personal_note??''}}</textarea>
                     </div>
                     <div class="mb-3 col-md-6">
                         <label class="form-label" for=""> <?= get_label('item', 'Item') ?> <span class="asterisk">*</span></label>

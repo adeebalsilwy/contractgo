@@ -1013,10 +1013,10 @@ class UserController extends Controller
         // Clone the query to get total count before pagination
         $totalusers = $users->count();
 
-        $canEdit = checkPermission('edit_users');
-        $canDelete = checkPermission('delete_users');
-        $canManageProjects = checkPermission('manage_projects');
-        $canManageTasks = checkPermission('manage_tasks');
+        $canEdit = checkPermission('edit users');
+        $canDelete = checkPermission('delete users');
+        $canManageProjects = checkPermission('edit projects');
+        $canManageTasks = checkPermission('edit tasks');
         $guardName = getGuardName();
         $authUserId = getAuthenticatedUser()->id;
         // Use distinct to avoid duplicates if any join condition or query causes duplicates
@@ -1485,5 +1485,93 @@ class UserController extends Controller
 
         // Return the combined results as JSON
         return response()->json($results);
+    }
+
+    /**
+     * Generate PDF for a user
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePdf($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            return $pdfService->generateUserPdf($user);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'User not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate and download PDF for a user
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            $filename = 'user-' . $user->id . '-' . str_slug($user->first_name . '-' . $user->last_name) . '.pdf';
+            
+            return $pdfService->streamPdf('pdf.users.template', [
+                'user' => $user,
+                'projects' => $user->projects ?? [],
+                'tasks' => $user->tasks ?? [],
+                'roles' => $user->roles ?? [],
+            ], $filename, false); // false = download attachment
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'User not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate bulk PDFs for multiple users
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'integer|exists:users,id'
+            ]);
+            
+            $ids = $validatedData['ids'];
+            $users = User::whereIn('id', $ids)->get();
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            // Generate combined report
+            $reportData = [
+                'title' => 'Users Report',
+                'report_data' => [
+                    'users' => $users,
+                    'total_count' => $users->count(),
+                    'active_count' => $users->where('status', 1)->count(),
+                    'generated_date' => now()->format('Y-m-d H:i:s')
+                ]
+            ];
+            
+            return $pdfService->generateReportPdf('Users Report', $reportData, 'pdf.reports.custom');
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating bulk PDF: ' . $e->getMessage()], 500);
+        }
     }
 }

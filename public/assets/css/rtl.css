@@ -1,0 +1,287 @@
+/* RTL (Right-to-Left) Styles for Arabic Language */
+
+/* Base RTL Layout */
+[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+}
+
+[dir="rtl"] body {
+    font-family: 'Tajawal', 'Cairo', 'Arial', sans-serif;
+}
+
+/* Flexbox RTL Support */
+[dir="rtl"] .d-flex {
+    flex-direction: row;
+}
+
+[dir="rtl"] .justify-content-start {
+    justify-content: flex-start !important;
+}
+
+[dir="rtl"] .justify-content-end {
+    justify-content: flex-end !important;
+}
+
+[dir="rtl"] .justify-content-between {
+    justify-content: space-between !important;
+}
+
+/* Margin and Padding Utilities */
+[dir="rtl"] .ms-auto {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+}
+
+[dir="rtl"] .me-auto {
+    margin-right: auto !important;
+    margin-left: 0 !important;
+}
+
+[dir="rtl"] .ps-0 {
+    padding-right: 0 !important;
+    padding-left: inherit !important;
+}
+
+[dir="rtl"] .pe-0 {
+    padding-left: 0 !important;
+    padding-right: inherit !important;
+}
+
+/* Float Utilities */
+[dir="rtl"] .float-start {
+    float: right !important;
+}
+
+[dir="rtl"] .float-end {
+    float: left !important;
+}
+
+/* Text Alignment */
+[dir="rtl"] .text-start {
+    text-align: right !important;
+}
+
+[dir="rtl"] .text-end {
+    text-align: left !important;
+}
+
+/* Card Components */
+[dir="rtl"] .card {
+    text-align: right;
+}
+
+[dir="rtl"] .card-header,
+[dir="rtl"] .card-footer {
+    text-align: right;
+}
+
+/* Table RTL Support */
+[dir="rtl"] table {
+    direction: rtl;
+}
+
+[dir="rtl"] .table th,
+[dir="rtl"] .table td {
+    text-align: right;
+}
+
+/* Form Elements */
+[dir="rtl"] .form-label {
+    text-align: right;
+}
+
+[dir="rtl"] .input-group .form-control:first-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+[dir="rtl"] .input-group .btn:first-child {
+    border-top-right-radius: 0.375rem;
+    border-bottom-right-radius: 0.375rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Navigation */
+[dir="rtl"] .navbar-nav {
+    padding-right: 0;
+}
+
+[dir="rtl"] .nav-item {
+    text-align: right;
+}
+
+/* Dropdown */
+[dir="rtl"] .dropdown-menu {
+    text-align: right;
+    left: auto;
+    right: 0;
+}
+
+/* Modal */
+[dir="rtl"] .modal-header,
+[dir="rtl"] .modal-footer {
+    direction: rtl;
+}
+
+/* Buttons */
+[dir="rtl"] .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+[dir="rtl"] .btn-icon i {
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+/* Alerts */
+[dir="rtl"] .alert {
+    text-align: right;
+}
+
+/* Breadcrumb */
+[dir="rtl"] .breadcrumb {
+    direction: rtl;
+}
+
+[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+    padding-left: 0;
+    padding-right: 0.5rem;
+}
+
+/* Pagination */
+[dir="rtl"] .pagination {
+    direction: ltr;
+}
+
+/* Sidebar/Menu */
+[dir="rtl"] .menu {
+    direction: rtl;
+}
+
+[dir="rtl"] .menu-item {
+    text-align: right;
+}
+
+[dir="rtl"] .menu-icon {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* Dashboard Cards */
+[dir="rtl"] .dashboard-card {
+    text-align: right;
+}
+
+[dir="rtl"] .dashboard-card .icon {
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
+/* Statistics */
+[dir="rtl"] .stat-card {
+    direction: rtl;
+}
+
+/* Timeline */
+[dir="rtl"] .timeline {
+    direction: rtl;
+}
+
+[dir="rtl"] .timeline-item::before {
+    right: 50%;
+    left: auto;
+}
+
+/* Badges */
+[dir="rtl"] .badge {
+    margin-left: 0.25rem;
+    margin-right: 0;
+}
+
+/* Avatar */
+[dir="rtl"] .avatar {
+    margin-left: 0;
+    margin-right: 0.5rem;
+}
+
+/* Progress Bars */
+[dir="rtl"] .progress-bar {
+    direction: ltr;
+}
+
+/* Tabs */
+[dir="rtl"] .nav-tabs {
+    direction: rtl;
+}
+
+/* Tooltips */
+[dir="rtl"] .tooltip {
+    direction: rtl;
+}
+
+/* Popover */
+[dir="rtl"] .popover {
+    direction: rtl;
+    text-align: right;
+}
+
+/* List Group */
+[dir="rtl"] .list-group-item {
+    text-align: right;
+}
+
+/* Custom Scrollbar for RTL */
+[dir="rtl"] ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+[dir="rtl"] ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+[dir="rtl"] ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+[dir="rtl"] ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive RTL */
+@media (max-width: 768px) {
+    [dir="rtl"] .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    [dir="rtl"] .row {
+        margin-right: -15px;
+        margin-left: -15px;
+    }
+    
+    [dir="rtl"] .col,
+    [dir="rtl"] [class*="col-"] {
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+}
+
+/* Print RTL Support */
+@media print {
+    [dir="rtl"] body {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    [dir="rtl"] .page-break {
+        page-break-before: always;
+    }
+}

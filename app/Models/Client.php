@@ -38,7 +38,8 @@ class Client extends Authenticatable implements MustVerifyEmail
         'email_verified_at',
         'acct_create_mail_sent',
         'email_verification_mail_sent',
-        'internal_purpose'
+        'internal_purpose',
+        'profession_id'
     ];
 
     /**
@@ -110,7 +111,8 @@ class Client extends Authenticatable implements MustVerifyEmail
 
     public function tasks()
     {
-        return Task::whereIn('project_id', $this->projects->pluck('id'));
+        return $this->belongsToMany(Task::class, 'project_client', 'client_id', 'project_id')
+                    ->where('tasks.workspace_id', getWorkspaceId());
     }
 
     public function project_tasks($project_id)
@@ -122,13 +124,35 @@ class Client extends Authenticatable implements MustVerifyEmail
 
     public function contracts()
     {
-        return Contract::where(function ($query) {
-            $query->where('created_by', 'c_' . $this->getKey())
-                ->orWhere('client_id', $this->getKey());
-        })
-            ->where('workspace_id', getWorkspaceId())
-            ->get();
+        return $this->hasMany(Contract::class, 'client_id')
+                    ->where('workspace_id', getWorkspaceId());
     }
+    
+    // Enhanced relationship to get contracts directly associated with this client
+    public function directContracts()
+    {
+        return $this->hasMany(Contract::class, 'client_id')
+                    ->where('workspace_id', getWorkspaceId());
+    }
+    
+    // Enhanced relationship to get contracts through projects that this client is associated with
+    public function projectContracts()
+    {
+        $projectIds = $this->projects()->pluck('id')->toArray();
+        return Contract::whereIn('project_id', $projectIds)
+                    ->where('workspace_id', getWorkspaceId());
+    }
+    
+    // Combined relationship to get all contracts associated with this client (direct and through projects)
+    public function allContracts()
+    {
+        // This would require a custom query since it combines two different relationship paths
+        $directContracts = $this->directContracts()->get();
+        $projectContracts = $this->projectContracts()->get();
+        
+        return $directContracts->concat($projectContracts);
+    }
+
     public function notes($search = '', $orderBy = 'id', $direction = 'desc', $limit = null, $offset = 0)
     {
         $query = Note::where(function ($query) {
@@ -249,5 +273,10 @@ class Client extends Authenticatable implements MustVerifyEmail
     public function pinnedTasks()
     {
         return $this->pinned()->where('pinnable_type', Task::class);
+    }
+    
+    public function profession()
+    {
+        return $this->belongsTo(Profession::class);
     }
 }

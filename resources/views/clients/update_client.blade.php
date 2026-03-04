@@ -83,6 +83,16 @@
                         <input class="form-control" type="text" id="zip" name="zip" placeholder="<?= get_label('please_enter_zip_code', 'Please enter ZIP code') ?>" value="{{ $client->zip }}">
                     </div>
                     <div class="mb-3 col-md-6">
+                        <label for="profession" class="form-label"><?= get_label('profession', 'Profession') ?></label>
+                        <select class="form-select professions_select" id="profession_id" name="profession_id" data-placeholder="<?= get_label('select_profession', 'Select profession') ?>">
+                            <option value=""><?= get_label('please_select', 'Please select') ?></option>
+                            @if($client->profession_id)
+                                <option value="{{ $client->profession_id }}" selected>{{ $client->profession->name }}</option>
+                            @endif
+                        </select>
+                        <div class="form-text"><?= get_label('profession_selection_help', 'Select the client\'s profession or area of expertise') ?></div>
+                    </div>
+                    <div class="mb-3 col-md-6">
                         <label for="dob" class="form-label"><?= get_label('date_of_birth', 'Date of birth') ?></label>
                         <input class="form-control" type="text" id="dob" name="dob" value="{{ $client->dob?format_date($client->dob) : ''}}" placeholder="<?= get_label('please_select', 'Please select') ?>" autocomplete="off">
                     </div>

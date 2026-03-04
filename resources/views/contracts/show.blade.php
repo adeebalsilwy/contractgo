@@ -34,8 +34,13 @@
                         <i class='bx bx-arrow-back'></i> <?= get_label('back', 'Back') ?>
                     </button>
                 </a>
+                <a href="{{ route('contracts.professional-pdf', $contract->id) }}" target="_blank">
+                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('print_contract', 'Print Contract') ?>">
+                        <i class='bx bx-printer'></i> <?= get_label('print', 'Print') ?>
+                    </button>
+                </a>
                 <button type="button" class="btn btn-sm btn-outline-dark" id="print-contract" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('print_contract', 'Print Contract') ?>">
-                    <i class='bx bx-printer'></i> <?= get_label('print', 'Print') ?>
+                    <i class='bx bx-printer'></i> <?= get_label('print', 'Print JS') ?>
                 </button>
                 @if (checkPermission('edit_contracts'))
                     <a href="{{ route('contracts.edit', $contract->id) }}">
@@ -71,9 +76,10 @@
                                 <div class="row">
                                     <div class="col-md-6 mt-3 mb-3">
                                         <label class="form-label" for="start_date"><?= get_label('users', 'Users') ?></label>
-                                        <?php
+                                        @php
                                         $users = $projectUsers ?? collect([]);
-                                        if (count($users) > 0) { ?>
+                                        @endphp
+                                        @if(count($users) > 0)
                                             <ul class="list-unstyled users-list m-0 avatar-group d-flex align-items-center flex-wrap">
                                                 @foreach($users as $user)
                                                 <li class="avatar avatar-sm pull-up" title="{{ $user->first_name }} {{ $user->last_name }}"><a href="{{ url('/users/profile/' . $user->id) }}">
@@ -81,15 +87,16 @@
                                                     </a></li>
                                                 @endforeach
                                             </ul>
-                                        <?php } else { ?>
+                                        @else
                                             <p><span class="badge bg-primary"><?= get_label('not_assigned', 'Not assigned') ?></span></p>
-                                        <?php } ?>
+                                        @endif
                                     </div>
                                     <div class="col-md-6  mt-3 mb-3">
                                         <label class="form-label" for="end_date"><?= get_label('clients', 'Clients') ?></label>
-                                        <?php
+                                        @php
                                         $clients = $projectClients ?? collect([]);
-                                        if (count($clients) > 0) { ?>
+                                        @endphp
+                                        @if(count($clients) > 0)
                                             <ul class="list-unstyled users-list m-0 avatar-group d-flex align-items-center flex-wrap">
                                                 @foreach($clients as $client)
                                                 <li class="avatar avatar-sm pull-up" title="{{ $client->first_name }} {{ $client->last_name }}"><a href="{{ url('/clients/profile/' . $client->id) }}">
@@ -97,9 +104,9 @@
                                                     </a></li>
                                                 @endforeach
                                             </ul>
-                                        <?php } else { ?>
+                                        @else
                                             <p><span class="badge bg-primary"><?= get_label('not_assigned', 'Not assigned') ?></span></p>
-                                        <?php } ?>
+                                        @endif
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label"><?= get_label('status', 'Status') ?></label>
@@ -120,6 +127,17 @@
                                             <span class="fw-medium text-success">{{ format_currency($contract->value) }}</span>
                                         </div>
                                     </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label"><?= get_label('progress_percentage', 'Progress %') ?></label>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-medium text-primary">{{ $contract->progress_percentage }}%</span>
+                                            <div class="ms-2">
+                                                <div class="progress" style="height: 10px; width: 100px;">
+                                                    <div class="progress-bar" role="progressbar" style="width: {{ $contract->progress_percentage }}%;" aria-valuenow="{{ $contract->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -138,7 +156,7 @@
                                         </div>
                                     </div>
                                     <div class="card-body" id="contract-statistics">
-                                        <?php
+                                        @php
                                         // Calculate status counts for tasks
                                         $statusCounts = [];
                                         $total_tasks_count = 0;
@@ -193,10 +211,10 @@
                                         $titles = implode(",", $titles);
                                         $task_counts = implode(",", $task_counts);
                                         $bg_colors = implode(",", $bg_colors);
-                                        ?>
+                                        @endphp
                                         <ul class="p-0 m-0">
                                             @foreach ($statusCounts as $statusId => $count)
-                                            <?php $status = $statuses->firstWhere('id', $statusId); ?>
+                                            @php $status = $statuses->firstWhere('id', $statusId); @endphp
                                             @if($status)
                                             <li class="d-flex mb-4 pb-1">
                                                 <div class="avatar flex-shrink-0 me-3">
@@ -318,7 +336,16 @@
             </div>
         </div>
         
+        <!-- Workflow Mini Map -->
+        @php
+            // Calculate workflow progress
+            $workflowStages = ['draft', 'quantity_approval', 'management_review', 'accounting_review', 'final_approval', 'approved'];
+            $currentStageIndex = array_search($contract->workflow_status, $workflowStages);
+            $workflowProgress = max(0, min(100, ($currentStageIndex + 1) * 20));
+        @endphp
+        
         <input type="hidden" id="media_type_id" value="{{$contract->id}}">
+        <input type="hidden" id="contract_id" value="{{$contract->id}}">
         @if(auth()->user()->can('manage_contracts') || auth()->user()->can('view_contracts') || auth()->user()->can('manage_contract_tasks') || auth()->user()->can('manage_contract_quantities') || auth()->user()->can('manage_contract_amendments') || auth()->user()->can('manage_contract_approvals') || auth()->user()->can('manage_journal_entries'))
         <!-- Tabs -->
         <div class="nav-align-top mt-2">
@@ -378,6 +405,20 @@
                 @php
                 if (empty($activeTab)) {
                 $activeTab = 'approvals';
+                }
+                @endphp
+                @endif
+                
+                @if (auth()->user()->can('manage_contract_obligations'))
+                <li class="nav-item">
+                    <button type="button" class="nav-link {{ $activeTab == 'obligations' ? 'active' : '' }}" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#navs-top-obligations" aria-controls="navs-top-obligations">
+                        <i class="menu-icon tf-icons bx bx-book-content text-info"></i><?= get_label('obligations', 'Obligations') ?>
+                    </button>
+                </li>
+                @php
+                if (empty($activeTab)) {
+                $activeTab = 'obligations';
                 }
                 @endphp
                 @endif
@@ -448,12 +489,12 @@
                             </button>
                         </a>
                     </div>
-                    <?php
+                    @php
                     $id = 'contract_' . $contract->id;
                     $tasksCount = $tasks->count();
                     $users = $projectUsers ?? collect([]);
                     $clients = $projectClients ?? collect([]);
-                    ?>
+                    @endphp
                     <x-tasks-card :tasks="$tasksCount" :id="$id" :users="$users" :clients="$clients" :emptyState="0" />
                 </div>
                 @endif
@@ -462,7 +503,7 @@
                 <div class="tab-pane fade {{ $activeTab == 'quantities' ? 'active show' : '' }}" id="navs-top-quantities" role="tabpanel">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div></div>
-                        <a href="{{ route('contract-quantities.create') }}?contract_id={{ $contract->id }}">
+                        <a href="{{ route('contract-quantities.contract-create', ['contractId' => $contract->id]) }}">
                             <button type="button" class="btn btn-sm btn-primary action_create_quantities" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('create_quantity', 'Create Quantity') ?>">
                                 <i class="bx bx-plus"></i>
                             </button>
@@ -474,11 +515,15 @@
                                 <thead>
                                     <tr>
                                         <th><?= get_label('id', 'ID') ?></th>
-                                        <th><?= get_label('item', 'Item') ?></th>
-                                        <th><?= get_label('quantity', 'Quantity') ?></th>
+                                        <th><?= get_label('item_description', 'Item Description') ?></th>
+                                        <th><?= get_label('requested_quantity', 'Requested Qty') ?></th>
+                                        <th><?= get_label('approved_quantity', 'Approved Qty') ?></th>
                                         <th><?= get_label('unit', 'Unit') ?></th>
-                                        <th><?= get_label('rate', 'Rate') ?></th>
-                                        <th><?= get_label('amount', 'Amount') ?></th>
+                                        <th><?= get_label('unit_price', 'Unit Price') ?></th>
+                                        <th><?= get_label('total_amount', 'Amount') ?></th>
+                                        <th><?= get_label('status', 'Status') ?></th>
+                                        <th><?= get_label('submitted_by', 'Submitted By') ?></th>
+                                        <th><?= get_label('submitted_at', 'Submitted At') ?></th>
                                         <th><?= get_label('actions', 'Actions') ?></th>
                                     </tr>
                                 </thead>
@@ -486,21 +531,104 @@
                                     @forelse($contract->quantities as $quantity)
                                     <tr>
                                         <td>{{ $quantity->id }}</td>
-                                        <td>{{ $quantity->item->name ?? 'N/A' }}</td>
-                                        <td>{{ $quantity->quantity }}</td>
-                                        <td>{{ $quantity->unit->name ?? 'N/A' }}</td>
-                                        <td>{{ format_currency($quantity->rate) }}</td>
-                                        <td>{{ format_currency($quantity->amount) }}</td>
+                                        <td>{{ $quantity->item_description }}</td>
+                                        <td>{{ $quantity->requested_quantity }}</td>
+                                        <td>{{ $quantity->approved_quantity ?? 'N/A' }}</td>
+                                        <td>{{ $quantity->unit }}</td>
+                                        <td>{{ format_currency($quantity->unit_price) }}</td>
+                                        <td>{{ format_currency($quantity->total_amount) }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $quantity->status === 'approved' ? 'success' : ($quantity->status === 'rejected' ? 'danger' : ($quantity->status === 'modified' ? 'warning' : 'primary')) }}">
+                                                {{ ucfirst($quantity->status) }}
+                                            </span>
+                                        </td>
+                                        <td>{{ $quantity->user->first_name ?? 'N/A' }} {{ $quantity->user->last_name ?? '' }}</td>
+                                        <td>{{ format_date($quantity->submitted_at) }}</td>
                                         <td>
                                             <div class="dropdown">
                                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
                                                     <i class="bx bx-dots-vertical-rounded"></i>
                                                 </button>
                                                 <div class="dropdown-menu">
+                                                    <a class="dropdown-item" href="{{ route('contract-quantities.show', $quantity->id) }}">
+                                                        <i class="bx bx-show-alt me-1"></i> <?= get_label('view', 'View') ?>
+                                                    </a>
+                                                    @if(checkPermission('edit_contract_quantities'))
                                                     <a class="dropdown-item" href="{{ route('contract-quantities.edit', $quantity->id) }}">
                                                         <i class="bx bx-edit-alt me-1"></i> <?= get_label('edit', 'Edit') ?>
                                                     </a>
+                                                    @endif
+                                                    @if(checkPermission('delete_contract_quantities') && $quantity->status === 'pending')
                                                     <a class="dropdown-item delete" href="javascript:void(0);" data-id="{{ $quantity->id }}" data-type="contract_quantities">
+                                                        <i class="bx bx-trash me-1"></i> <?= get_label('delete', 'Delete') ?>
+                                                    </a>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="11" class="text-center"><?= get_label('no_quantities_found', 'No quantities found') ?></td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                
+                @if (auth()->user()->can('manage_contract_approvals'))
+                <div class="tab-pane fade {{ $activeTab == 'approvals' ? 'active show' : '' }}" id="navs-top-approvals" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div></div>
+                        <a href="#">
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('create_approval', 'Create Approval') ?>">
+                                <i class="bx bx-plus"></i>
+                            </button>
+                        </a>
+                    </div>
+                    <div class="col-12">
+                        <div class="table-responsive text-nowrap">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th><?= get_label('id', 'ID') ?></th>
+                                        <th><?= get_label('approval_stage', 'Stage') ?></th>
+                                        <th><?= get_label('approver', 'Approver') ?></th>
+                                        <th><?= get_label('status', 'Status') ?></th>
+                                        <th><?= get_label('comments', 'Comments') ?></th>
+                                        <th><?= get_label('approved_at', 'Approved At') ?></th>
+                                        <th><?= get_label('actions', 'Actions') ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($contract->approvals as $approval)
+                                    <tr>
+                                        <td>{{ $approval->id }}</td>
+                                        <td>{{ ucfirst(str_replace('_', ' ', $approval->approval_stage)) }}</td>
+                                        <td>{{ $approval->approver->first_name ?? 'N/A' }} {{ $approval->approver->last_name ?? '' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $approval->status === 'approved' ? 'success' : ($approval->status === 'rejected' ? 'danger' : 'warning') }}">
+                                                {{ ucfirst($approval->status) }}
+                                            </span>
+                                        </td>
+                                        <td>{{ Str::limit($approval->comments, 50) }}</td>
+                                        <td>{{ $approval->approved_rejected_at ? format_date($approval->approved_rejected_at) : '-' }}</td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                                    <i class="bx bx-dots-vertical-rounded"></i>
+                                                </button>
+                                                <div class="dropdown-menu">
+                                                    <a class="dropdown-item" href="#" onclick="alert('View details for approval ID: {{ $approval->id }}'); return false;">
+                                                        <i class="bx bx-show-alt me-1"></i> <?= get_label('view', 'View') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="alert('Edit approval ID: {{ $approval->id }}'); return false;">
+                                                        <i class="bx bx-edit-alt me-1"></i> <?= get_label('edit', 'Edit') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="alert('Delete approval ID: {{ $approval->id }}'); return false;">
                                                         <i class="bx bx-trash me-1"></i> <?= get_label('delete', 'Delete') ?>
                                                     </a>
                                                 </div>
@@ -509,7 +637,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="text-center"><?= get_label('no_quantities_found', 'No quantities found') ?></td>
+                                        <td colspan="7" class="text-center"><?= get_label('no_approvals_found', 'No approvals found') ?></td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -536,8 +664,11 @@
                                     <tr>
                                         <th><?= get_label('id', 'ID') ?></th>
                                         <th><?= get_label('title', 'Title') ?></th>
+                                        <th><?= get_label('amendment_type', 'Type') ?></th>
                                         <th><?= get_label('description', 'Description') ?></th>
-                                        <th><?= get_label('created_at', 'Created At') ?></th>
+                                        <th><?= get_label('status', 'Status') ?></th>
+                                        <th><?= get_label('requested_by', 'Requested By') ?></th>
+                                        <th><?= get_label('requested_at', 'Requested At') ?></th>
                                         <th><?= get_label('actions', 'Actions') ?></th>
                                     </tr>
                                 </thead>
@@ -545,9 +676,16 @@
                                     @forelse($contract->amendments as $amendment)
                                     <tr>
                                         <td>{{ $amendment->id }}</td>
-                                        <td>{{ $amendment->title }}</td>
+                                        <td>{{ $amendment->title ?? Str::limit($amendment->description, 30) }}</td>
+                                        <td><span class="badge bg-info">{{ ucfirst(str_replace('_', ' ', $amendment->amendment_type)) }}</span></td>
                                         <td>{{ Str::limit($amendment->description, 50) }}</td>
-                                        <td>{{ format_date($amendment->created_at) }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $amendment->status === 'approved' ? 'success' : ($amendment->status === 'rejected' ? 'danger' : 'warning') }}">
+                                                {{ ucfirst($amendment->status) }}
+                                            </span>
+                                        </td>
+                                        <td>{{ $amendment->requestedBy->first_name ?? 'N/A' }} {{ $amendment->requestedBy->last_name ?? '' }}</td>
+                                        <td>{{ format_date($amendment->requested_at) }}</td>
                                         <td>
                                             <div class="dropdown">
                                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
@@ -555,7 +693,7 @@
                                                 </button>
                                                 <div class="dropdown-menu">
                                                     <a class="dropdown-item" href="{{ route('contract-amendments.show', $amendment->id) }}">
-                                                        <i class="bx bx-show me-1"></i> <?= get_label('view', 'View') ?>
+                                                        <i class="bx bx-show-alt me-1"></i> <?= get_label('view', 'View') ?>
                                                     </a>
                                                     <a class="dropdown-item" href="{{ route('contract-amendments.edit', $amendment->id) }}">
                                                         <i class="bx bx-edit-alt me-1"></i> <?= get_label('edit', 'Edit') ?>
@@ -569,7 +707,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="5" class="text-center"><?= get_label('no_amendments_found', 'No amendments found') ?></td>
+                                        <td colspan="8" class="text-center"><?= get_label('no_amendments_found', 'No amendments found') ?></td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -579,49 +717,85 @@
                 </div>
                 @endif
                 
-                @if (auth()->user()->can('manage_contract_approvals'))
-                <div class="tab-pane fade {{ $activeTab == 'approvals' ? 'active show' : '' }}" id="navs-top-approvals" role="tabpanel">
+                @if (auth()->user()->can('manage_contract_obligations'))
+                <div class="tab-pane fade {{ $activeTab == 'obligations' ? 'active show' : '' }}" id="navs-top-obligations" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div></div>
+                        <a href="{{ route('contract-obligations.create') }}?contract_id={{ $contract->id }}">
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('create_obligation', 'Create Obligation') ?>">
+                                <i class="bx bx-plus"></i>
+                            </button>
+                        </a>
+                    </div>
                     <div class="col-12">
                         <div class="table-responsive text-nowrap">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th><?= get_label('id', 'ID') ?></th>
-                                        <th><?= get_label('role', 'Role') ?></th>
-                                        <th><?= get_label('assigned_user', 'Assigned User') ?></th>
+                                        <th><?= get_label('party', 'Party') ?></th>
+                                        <th><?= get_label('title', 'Title') ?></th>
+                                        <th><?= get_label('type', 'Type') ?></th>
+                                        <th><?= get_label('priority', 'Priority') ?></th>
                                         <th><?= get_label('status', 'Status') ?></th>
-                                        <th><?= get_label('comments', 'Comments') ?></th>
-                                        <th><?= get_label('approved_at', 'Approved At') ?></th>
+                                        <th><?= get_label('due_date', 'Due Date') ?></th>
+                                        <th><?= get_label('assigned_to', 'Assigned To') ?></th>
                                         <th><?= get_label('actions', 'Actions') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($contract->approvals as $approval)
+                                    @forelse($contract->obligations as $obligation)
                                     <tr>
-                                        <td>{{ $approval->id }}</td>
-                                        <td>{{ $approval->role }}</td>
-                                        <td>{{ $approval->user->first_name ?? 'N/A' }} {{ $approval->user->last_name ?? '' }}</td>
+                                        <td>{{ $obligation->id }}</td>
+                                        <td>{{ $obligation->party->first_name ?? 'N/A' }} {{ $obligation->party->last_name ?? '' }}</td>
+                                        <td>{{ $obligation->title }}</td>
                                         <td>
-                                            <span class="badge bg-{{ $approval->status === 'approved' ? 'success' : ($approval->status === 'rejected' ? 'danger' : 'warning') }}">
-                                                {{ ucfirst($approval->status) }}
+                                            <span class="badge bg-{{ $obligation->obligation_type === 'payment' ? 'success' : ($obligation->obligation_type === 'delivery' ? 'info' : ($obligation->obligation_type === 'performance' ? 'warning' : 'primary')) }}">
+                                                {{ ucfirst($obligation->obligation_type) }}
                                             </span>
                                         </td>
-                                        <td>{{ Str::limit($approval->comments, 50) }}</td>
-                                        <td>{{ $approval->approved_at ? format_date($approval->approved_at) : '-' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ $obligation->priority === 'critical' ? 'danger' : ($obligation->priority === 'high' ? 'warning' : ($obligation->priority === 'medium' ? 'primary' : 'secondary')) }}">
+                                                {{ ucfirst($obligation->priority) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ $obligation->status === 'completed' ? 'success' : ($obligation->status === 'in_progress' ? 'info' : ($obligation->status === 'overdue' ? 'danger' : 'warning')) }}">
+                                                {{ ucfirst($obligation->status) }}
+                                                @if($obligation->is_overdue)
+                                                    <i class="bx bx-error text-white" title="<?= get_label('overdue', 'Overdue') ?>"></i>
+                                                @endif
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ $obligation->due_date ? format_date($obligation->due_date) : 'N/A' }}
+                                            @if($obligation->is_due_soon)
+                                                <i class="bx bx-time-five text-warning" title="<?= get_label('due_soon', 'Due Soon') ?>"></i>
+                                            @endif
+                                        </td>
+                                        <td>{{ $obligation->assignedTo->first_name ?? 'Unassigned' }}</td>
                                         <td>
                                             <div class="dropdown">
                                                 <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
                                                     <i class="bx bx-dots-vertical-rounded"></i>
                                                 </button>
                                                 <div class="dropdown-menu">
-                                                    <!-- Edit option removed as contract-approvals.edit route does not exist -->
+                                                    <a class="dropdown-item" href="{{ route('contract-obligations.show', $obligation->id) }}">
+                                                        <i class="bx bx-show-alt me-1"></i> <?= get_label('view', 'View') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ route('contract-obligations.edit', $obligation->id) }}">
+                                                        <i class="bx bx-edit-alt me-1"></i> <?= get_label('edit', 'Edit') ?>
+                                                    </a>
+                                                    <a class="dropdown-item delete" href="javascript:void(0);" data-id="{{ $obligation->id }}" data-type="contract_obligations">
+                                                        <i class="bx bx-trash me-1"></i> <?= get_label('delete', 'Delete') ?>
+                                                    </a>
                                                 </div>
                                             </div>
                                         </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="text-center"><?= get_label('no_approvals_found', 'No approvals found') ?></td>
+                                        <td colspan="9" class="text-center"><?= get_label('no_obligations_found', 'No obligations found') ?></td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -630,7 +804,7 @@
                     </div>
                 </div>
                 @endif
-                
+
                 @if (auth()->user()->can('manage_estimates_invoices'))
                 <div class="tab-pane fade {{ $activeTab == 'estimates' ? 'active show' : '' }}" id="navs-top-estimates" role="tabpanel">
                     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -703,6 +877,12 @@
                                                     </a>
                                                     <a class="dropdown-item" href="{{ route('estimates-invoices.estimate-pdf', $estimate->id) }}">
                                                         <i class="bx bx-receipt me-1"></i> <?= get_label('extract_format', 'Extract Format') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ url('estimates-invoices/mind-map/' . $estimate->id) }}">
+                                                        <i class="bx bx-sitemap me-1"></i> <?= get_label('view_mind_map', 'View Mind Map') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="{{ url('estimates-invoices/mind-map/' . $estimate->id) }}">
+                                                        <i class="bx bx-sitemap me-1"></i> <?= get_label('view_mind_map', 'View Mind Map') ?>
                                                     </a>
                                                 </div>
                                             </div>
@@ -1122,7 +1302,90 @@
 </script>
 <script src="{{asset('assets/js/apexcharts.js')}}"></script>
 <script>
+function queryParams(params) {
+    // Get filter values
+    var userIds = $('#user_filter').val();
+    var clientIds = $('#client_filter').val();
+    var activities = $('#activity_filter').val();
+    var types = $('#type_filter').val();
+    var dateFrom = $('#activity_log_between_date_from').val();
+    var dateTo = $('#activity_log_between_date_to').val();
+    
+    // Add contract ID as a filter
+    var contractId = $('#type_id').val();
+    
+    // Merge all parameters
+    var queryParams = {
+        user_ids: userIds,
+        client_ids: clientIds,
+        activities: activities,
+        types: types,
+        date_from: dateFrom,
+        date_to: dateTo,
+        type: 'contract', // Filter by contract type
+        type_id: contractId, // Specific contract ID
+        search: params.search,
+        sort: params.sort,
+        order: params.order,
+        offset: params.offset,
+        limit: params.limit
+    };
+    
+    return queryParams;
+}
+
 $(document).ready(function() {
+    // Initialize multi-select dropdowns
+    $('.users_select').select2({
+        placeholder: '<?= get_label('select_actioned_by_users', 'Select Actioned By Users') ?>',
+        allowClear: true
+    });
+    
+    $('.clients_select').select2({
+        placeholder: '<?= get_label('select_actioned_by_clients', 'Select Actioned By Clients') ?>',
+        allowClear: true
+    });
+    
+    $('.js-example-basic-multiple').select2({
+        placeholder: $(this).data('placeholder'),
+        allowClear: $(this).data('allow-clear') === true
+    });
+    
+    // Initialize date range picker
+    if(typeof $.fn.daterangepicker !== 'undefined') {
+        $('#activity_log_between_date').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear',
+                format: 'YYYY-MM-DD'
+            }
+        });
+        
+        $('#activity_log_between_date').on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+            // Update hidden inputs
+            $('#activity_log_between_date_from').val(picker.startDate.format('YYYY-MM-DD'));
+            $('#activity_log_between_date_to').val(picker.endDate.format('YYYY-MM-DD'));
+            
+            // Refresh the table
+            $('#activity_log_table').bootstrapTable('refresh');
+        });
+        
+        $('#activity_log_between_date').on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+            $('#activity_log_between_date_from').val('');
+            $('#activity_log_between_date_to').val('');
+            
+            // Refresh the table
+            $('#activity_log_table').bootstrapTable('refresh');
+        });
+    }
+    
+    // Add change event handlers for filters
+    $('#user_filter, #client_filter, #activity_filter, #type_filter').on('change', function() {
+        $('#activity_log_table').bootstrapTable('refresh');
+    });
+    
     // Contract Statistics Chart
     var options = {
         series: [{
@@ -1325,9 +1588,11 @@ $(document).ready(function() {
                 }
             });
             
-            // Print contract details
-            $('#print-contract').on('click', function() {
-                window.print();
+            // Print contract details - updated to use professional PDF route
+            $('#print-contract').on('click', function(e) {
+                e.preventDefault();
+                var contractId = $('#contract_id').val();
+                window.open('/contracts/' + contractId + '/professional-pdf', '_blank');
             });
         });
     </script>

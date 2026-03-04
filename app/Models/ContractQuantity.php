@@ -13,6 +13,7 @@ class ContractQuantity extends Model
         'contract_id',
         'user_id',
         'workspace_id',
+        'item_id',
         'item_description',
         'requested_quantity',
         'approved_quantity',
@@ -62,6 +63,20 @@ class ContractQuantity extends Model
     // Relationship to connect ContractQuantity to Item via item_description matching title
     public function item()
     {
-        return $this->hasOne(Item::class, 'title', 'item_description');
+        return $this->belongsTo(Item::class);
+    }
+    
+    // Method to check if this quantity can be modified after approval
+    public function canBeModified()
+    {
+        // Allow modification if status is pending or rejected
+        return in_array($this->status, ['pending', 'rejected']);
+    }
+    
+    // Method to check if this quantity is bound to contract (cannot be re-bound after approval)
+    public function isBoundToContract()
+    {
+        // Once approved, the quantity is bound to the contract and cannot be re-assigned
+        return in_array($this->status, ['approved', 'modified']);
     }
 }

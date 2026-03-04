@@ -1,12 +1,3 @@
-@php
-    use App\Models\Workspace;
-    use Spatie\Permission\Models\Role;
-
-    $auth_user = getAuthenticatedUser();
-    $roles = Role::where('name', '!=', 'admin')->get();
-    $isAdminOrHasAllDataAccess = isAdminOrHasAllDataAccess();
-    $guard = getGuardName();
-@endphp
 @if (
     (Request::is('projects*') && !Request::is('projects/information/*')) ||
         Request::is('home') ||
@@ -104,12 +95,12 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="start_date"><?= get_label('starts_at', 'Starts at') ?></label>
                     <input type="text" id="start_date" name="start_date" class="form-control"
-                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off">
+                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off" value="{{ old('start_date') ? format_date(old('start_date'), false, app('php_date_format'), 'Y-m-d') : '' }}">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="due_date"><?= get_label('ends_at', 'Ends at') ?></label>
                     <input type="text" id="end_date" name="end_date" class="form-control"
-                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off">
+                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off" value="{{ old('end_date') ? format_date(old('end_date'), false, app('php_date_format'), 'Y-m-d') : '' }}">
                 </div>
             </div>
             <div class="row">
@@ -128,7 +119,7 @@
                         </option>
                     </select>
                 </div>
-                @if ($isAdminOrHasAllDataAccess)
+                @if (isAdminOrHasAllDataAccess())
                     <div class="col-md-6 mb-3">
                         <label class="form-check-label"
                             for="clientCanDiscussProject">{{ get_label('client_can_discuss', 'Client Can Discuss') }}?</label>
@@ -164,7 +155,7 @@
                     <label class="form-label" for="user_id"><?= get_label('select_users', 'Select users') ?></label>
                     <select class="form-control users_select" name="user_id[]" multiple="multiple"
                         data-placeholder="<?= get_label('type_to_search', 'Type to search') ?>">
-                        @if ($guard == 'web')
+                        @if (getGuardName() == 'web')
                             <option value="{{ $auth_user->id }}" selected>{{ $auth_user->first_name }}
                                 {{ $auth_user->last_name }}</option>
                         @endif
@@ -177,7 +168,7 @@
                         for="client_id"><?= get_label('select_clients', 'Select clients') ?></label>
                     <select class="form-control clients_select" name="client_id[]" multiple="multiple"
                         data-placeholder="<?= get_label('type_to_search', 'Type to search') ?>">
-                        @if ($guard == 'client')
+                        @if (getGuardName() == 'client')
                             <option value="{{ $auth_user->id }}" selected>{{ $auth_user->first_name }}
                                 {{ $auth_user->last_name }}</option>
                         @endif
@@ -263,7 +254,7 @@
             <!-- Custom Fields Section -->
             <x-custom-fields :isEdit="$isEdit" :fields="$projectCustomFields" />
 
-            @if (!$isAdminOrHasAllDataAccess)
+            @if (!isAdminOrHasAllDataAccess())
                 <div class="alert alert-primary" role="alert">
                     <?= get_label('you_will_be_project_participant_automatically', 'You will be project participant automatically.') ?>
                 </div>
@@ -273,6 +264,7 @@
 @endif
 
 @if (Request::is('projects*') ||
+        Request::is('projects/list*') ||
         Request::is('home') ||
         Request::is('users/profile/*') ||
         Request::is('clients/profile/*') ||
@@ -371,12 +363,12 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="start_date"><?= get_label('starts_at', 'Starts at') ?></label>
                     <input type="text" id="update_start_date" name="start_date" class="form-control"
-                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off">
+                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off" value="{{ old('start_date') ? format_date(old('start_date'), false, app('php_date_format'), 'Y-m-d') : '' }}">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label" for="due_date"><?= get_label('ends_at', 'Ends at') ?></label>
                     <input type="text" id="update_end_date" name="end_date" class="form-control"
-                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off">
+                        placeholder="{{ get_label('please_select', 'Please Select') }}" autocomplete="off" value="{{ old('end_date') ? format_date(old('end_date'), false, app('php_date_format'), 'Y-m-d') : '' }}">
                 </div>
             </div>
             <div class="row">
@@ -395,7 +387,7 @@
                         </option>
                     </select>
                 </div>
-                @if ($isAdminOrHasAllDataAccess)
+                @if (isAdminOrHasAllDataAccess())
                     <div class="col-md-6 mb-3">
                         <label class="form-check-label"
                             for="updateClientCanDiscussProject">{{ get_label('client_can_discuss', 'Client Can Discuss') }}?</label>

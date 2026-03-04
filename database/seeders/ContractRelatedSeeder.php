@@ -71,24 +71,16 @@ class ContractRelatedSeeder extends Seeder
             $createdUsers[] = $user;
         }
         
-        // Create sample workspaces if they don't exist (using first user as default)
-        $workspaces = [
-            ['title' => 'مكتب إدارة المشاريع', 'user_id' => $createdUsers[0]->id ?? 1],
-            ['title' => 'مكتب البناء', 'user_id' => $createdUsers[1]->id ?? 2],
-            ['title' => 'مكتب البنية التحتية', 'user_id' => $createdUsers[2]->id ?? 3]
-        ];
-        
-        foreach ($workspaces as $workspaceData) {
-            Workspace::firstOrCreate(
-                ['title' => $workspaceData['title']],
-                $workspaceData
-            );
+        // Use workspace ID 1 only (Modern Real Estate Company)
+        $workspace = Workspace::find(1);
+        if (!$workspace) {
+            $this->command->error('Workspace ID 1 not found! Please run ModernRealEstateCompanySeeder first.');
+            return;
         }
         
-        // Update users to assign default_workspace_ids now that workspaces exist
-        $workspacesCreated = Workspace::all();
-        for ($i = 0; $i < min(count($createdUsers), $workspacesCreated->count()); $i++) {
-            $createdUsers[$i]->update(['default_workspace_id' => $workspacesCreated[$i]->id]);
+        // Assign all users to workspace ID 1
+        foreach ($createdUsers as $user) {
+            $user->update(['default_workspace_id' => $workspace->id]);
         }
         
         // Create sample clients if they don't exist
@@ -148,7 +140,7 @@ class ContractRelatedSeeder extends Seeder
                 'end_date' => now()->addDays(365),
                 'user_id' => $createdUsers[0]->id ?? 1,
                 'client_id' => $createdClients[0]->id ?? 1,
-                'workspace_id' => $workspacesCreated->first()->id ?? 1,
+                'workspace_id' => $workspace->id,
                 'created_by' => $createdUsers[0]->id ?? 1,
                 'status_id' => 1,
                 'priority_id' => 1
@@ -162,7 +154,7 @@ class ContractRelatedSeeder extends Seeder
                 'end_date' => now()->addDays(540),
                 'user_id' => $createdUsers[1]->id ?? 2,
                 'client_id' => $createdClients[1]->id ?? 2,
-                'workspace_id' => $workspacesCreated->skip(1)->first()->id ?? 2,
+                'workspace_id' => $workspace->id,
                 'created_by' => $createdUsers[1]->id ?? 2,
                 'status_id' => 1,
                 'priority_id' => 2
@@ -176,7 +168,7 @@ class ContractRelatedSeeder extends Seeder
                 'end_date' => now()->addDays(180),
                 'user_id' => $createdUsers[2]->id ?? 3,
                 'client_id' => $createdClients[2]->id ?? 3,
-                'workspace_id' => $workspacesCreated->skip(2)->first()->id ?? 3,
+                'workspace_id' => $workspace->id,
                 'created_by' => $createdUsers[2]->id ?? 3,
                 'status_id' => 1,
                 'priority_id' => 1
@@ -192,12 +184,12 @@ class ContractRelatedSeeder extends Seeder
         
         // Create contract types if they don't exist
         $contractTypes = [
-            ['type' => 'عقد إنشاءات', 'workspace_id' => $workspacesCreated->first()->id ?? 1],
-            ['type' => 'عقد صيانة', 'workspace_id' => $workspacesCreated->first()->id ?? 1],
-            ['type' => 'عقد توريد مواد', 'workspace_id' => $workspacesCreated->skip(1)->first()->id ?? 2],
-            ['type' => 'عقد استشارات هندسية', 'workspace_id' => $workspacesCreated->skip(1)->first()->id ?? 2],
-            ['type' => 'عقد تشييد وبناء', 'workspace_id' => $workspacesCreated->skip(2)->first()->id ?? 3],
-            ['type' => 'عقد تجهيزات كهربائية', 'workspace_id' => $workspacesCreated->skip(2)->first()->id ?? 3],
+            ['type' => 'عقد إنشاءات', 'workspace_id' => $workspace->id],
+            ['type' => 'عقد صيانة', 'workspace_id' => $workspace->id],
+            ['type' => 'عقد توريد مواد', 'workspace_id' => $workspace->id],
+            ['type' => 'عقد استشارات هندسية', 'workspace_id' => $workspace->id],
+            ['type' => 'عقد تشييد وبناء', 'workspace_id' => $workspace->id],
+            ['type' => 'عقد تجهيزات كهربائية', 'workspace_id' => $workspace->id],
         ];
         
         foreach ($contractTypes as $contractType) {

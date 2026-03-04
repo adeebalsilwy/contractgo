@@ -47,7 +47,7 @@
                                 </tr>
                                 <tr>
                                     <td><strong><?= get_label('contract', 'Contract') ?>:</strong></td>
-                                    <td>{{ $amendment->contract->title }}</td>
+                                    <td>{{ $amendment->contract ? $amendment->contract->title : 'N/A' }}</td>
                                 </tr>
                                 <tr>
                                     <td><strong><?= get_label('amendment_type', 'Amendment Type') ?>:</strong></td>

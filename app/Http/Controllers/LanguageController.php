@@ -17,7 +17,6 @@ class LanguageController extends Controller
     protected $user;
     public function __construct()
     {
-
         $this->middleware(function ($request, $next) {
             // fetch session and use it in entire class with constructor
             $this->user = getAuthenticatedUser();
@@ -213,9 +212,14 @@ class LanguageController extends Controller
 
     public function switch($locale)
     {
-        session(['my_locale' => $locale]);
-
-        return redirect()->back()->with('message', 'Language switched successfully.');
+        \Log::info('Language switch method called with locale: ' . $locale);
+        try {
+            session(['my_locale' => $locale]);
+            return redirect()->back()->with('message', 'Language switched successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Error in language switch: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => 'Failed to switch language: ' . $e->getMessage()]);
+        }
     }
 
     public function set_default(Request $request)

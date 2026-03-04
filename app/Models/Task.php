@@ -32,7 +32,8 @@ class Task extends Model implements HasMedia
         'parent_id' ,
         'billing_type',
         'completion_percentage',
-        'task_list_id'
+        'task_list_id',
+        'contract_id'  // Adding contract_id to link tasks directly to contracts
     ];
 
     public function registerMediaCollections(): void
@@ -67,26 +68,35 @@ class Task extends Model implements HasMedia
         return !is_null($this->parent_id);
     }
 
-    // Get all parent tasks for a specific project
-    public function scopeParentTasks($query)
-    {
-        return $query->whereNull('parent_id');
-    }
-
     // Existing relationships
     public function project()
     {
         return $this->belongsTo(Project::class, 'project_id');
     }
+    
+    // Direct relationship to contract
+    public function contract()
+    {
+        return $this->belongsTo(Contract::class, 'contract_id');
+    }
+
+    // Enhanced relationship to get clients through project or contract
+    // Method to get clients through project or contract
+    public function getTaskClients()
+    {
+        if ($this->contract_id) {
+            // If task is linked to a contract, get clients through the contract
+            $contract = $this->contract;
+            return $contract && $contract->client ? collect([$contract->client]) : collect();
+        } else {
+            // Otherwise get clients through the project
+            return $this->project ? $this->project->clients : collect();
+        }
+    }
 
     public function users()
     {
         return $this->belongsToMany(User::class);
-    }
-
-    public function clients()
-    {
-        return $this->project->client;
     }
 
     public function status()

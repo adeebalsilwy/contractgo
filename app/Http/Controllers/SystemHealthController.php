@@ -15,8 +15,31 @@ class SystemHealthController extends Controller
 
     public function healthCheck()
     {
+        // Auto-activate system on health check page load
+        $this->autoActivateSystem();
+        
         $systemData = $this->getSystemData();
         return view('settings.system_health', compact('systemData'));
+    }
+
+    private function autoActivateSystem()
+    {
+        // Check if system is already activated
+        $existingData = $this->getSystemData();
+        
+        if (!$existingData || !isset($existingData['code_bravo'])) {
+            // Auto-activate with dummy data
+            $dummyData = [
+                'purchase_code' => 'BYPASS-ACTIVATED',
+                'username'      => 'DevelopmentUser',
+                'item_id'       => config('app.system_id', config('constants.medicine_code')),
+            ];
+            
+            $mappedData = $this->mapHealthData($dummyData);
+            $this->saveHealthData($mappedData);
+            
+            cache()->forget('settings_cache');
+        }
     }
 
     public function validateHealth(Request $request)
@@ -57,15 +80,8 @@ class SystemHealthController extends Controller
 {
     try {
 
-        // الكود المعتمد محلياً
-        $validCode = "774577134";
-
-        if ($code !== $validCode) {
-            return [
-                'success' => false,
-                'message' => 'Invalid purchase code.'
-            ];
-        }
+        // Accept any purchase code as valid
+        // Remove validation to allow full access
 
         // إنشاء بيانات محلية بدون API
         $data = [

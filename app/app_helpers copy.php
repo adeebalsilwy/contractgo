@@ -2405,8 +2405,8 @@ if (!function_exists('formatProject')) {
             'id' => $project->id,
             'title' => $project->title,
             'task_count' => isAdminOrHasAllDataAccess() ? count($project->tasks) : $auth_user->project_tasks($project->id)->count(),
-            'status' => $project->status->title,
-            'status_id' => $project->status->id,
+            'status' => $project->status ? $project->status->title : 'N/A',
+            'status_id' => $project->status ? $project->status->id : null,
             'priority' => $project->priority ? $project->priority->title : null,
             'priority_id' => $project->priority ? $project->priority->id : null,
             'users' => $project->users->map(function ($user) {

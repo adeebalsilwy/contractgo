@@ -1515,7 +1515,7 @@ if ($("#meeting_start_date_between").length) {
     );
 }
 $(
-    "textarea#footer_text,textarea#contract_description,textarea#update_contract_description,textarea.description"
+    "textarea#footer_text,textarea#contract_description,textarea#update_contract_description,textarea.description,textarea.tinymce-editor"
 ).tinymce({
     height: 250,
     menubar: false,
@@ -3392,6 +3392,61 @@ $(document).ready(function () {
     // ✅ Reset when offcanvas is closed
     $(".offcanvas").on("hidden.bs.offcanvas", function () {
         resetModalForm(this);
+    });
+
+    //✅ Handle create_project_offcanvas shown event
+    $("#create_project_offcanvas").on("shown.bs.offcanvas", function () {
+        console.log("Create project offcanvas shown - initializing form");
+        
+        // Initialize Select2 for users and clients dropdowns
+        var $usersSelect = $(this).find(".users_select");
+        var $clientsSelect = $(this).find(".clients_select");
+        
+        if ($usersSelect.length && !$usersSelect.hasClass("select2-hidden-accessible")) {
+            $usersSelect.select2({
+                placeholder: "Type to search",
+                allowClear: true,
+                width: "100%",
+                dropdownParent: $("#create_project_offcanvas")
+            });
+            console.log("Users select2 initialized");
+        }
+        
+        if ($clientsSelect.length && !$clientsSelect.hasClass("select2-hidden-accessible")) {
+            $clientsSelect.select2({
+                placeholder: "Type to search",
+                allowClear: true,
+                width: "100%",
+                dropdownParent: $("#create_project_offcanvas")
+            });
+            console.log("Clients select2 initialized");
+        }
+        
+        // Debug: Log current values
+        setTimeout(function() {
+            console.log("Current users value:", $usersSelect.val());
+            console.log("Current clients value:", $clientsSelect.val());
+        }, 100);
+    });
+
+    // ✅ Handle form submission to ensure Select2 values are captured
+    $(document).on("submit", "#create_project_form", function(e) {
+        var $form = $(this);
+        var $usersSelect = $form.find(".users_select");
+        var $clientsSelect = $form.find(".clients_select");
+        
+        console.log("Form submission intercepted");
+        console.log("Users selected:", $usersSelect.val());
+        console.log("Clients selected:", $clientsSelect.val());
+        
+        // Ensure Select2 values are properly set in hidden inputs
+        if ($usersSelect.val()) {
+            console.log("Setting user_id values:", $usersSelect.val());
+        }
+        
+        if ($clientsSelect.val()) {
+            console.log("Setting client_id values:", $clientsSelect.val());
+        }
     });
 });
 
@@ -7978,6 +8033,31 @@ $(document).on("submit", ".new-form-submit-event", function (e) {
 
     var formData = new FormData(this);
 
+    // Debug: Log form data for create_project_form
+    if ($(this).attr("id") === "create_project_form") {
+        console.log("=== CREATE PROJECT FORM DEBUG ===");
+        console.log("Form action:", $(this).attr("action"));
+        
+        // Log all form values
+        var formValues = {};
+        $(this).find("input, select, textarea").each(function() {
+            var name = $(this).attr("name");
+            var value = $(this).val();
+            if (name) {
+                formValues[name] = value;
+            }
+        });
+        console.log("Form values:", formValues);
+        
+        // Log Select2 specific values
+        var $usersSelect = $(this).find(".users_select");
+        var $clientsSelect = $(this).find(".clients_select");
+        console.log("Users Select2 value:", $usersSelect.val());
+        console.log("Clients Select2 value:", $clientsSelect.val());
+        console.log("Serialized data:", $(this).serialize());
+        console.log("=== END DEBUG ===");
+    }
+
     // Encode HTML content for template saving
     if (
         $(this).attr("action").includes("store_template") ||
@@ -8110,7 +8190,7 @@ $(document).on("submit", ".new-form-submit-event", function (e) {
         }
     });
 
-    // ✅ ENHANCED OVERLAY CLOSING LOGIC
+    //✅ ENHANCED OVERLAY CLOSING LOGIC
     function handleOverlayClosing(isDependentProperty, parentModal, parentOffcanvas) {
         try {
             if (isDependentProperty) {
@@ -8134,6 +8214,60 @@ $(document).on("submit", ".new-form-submit-event", function (e) {
             console.warn('Error in smart overlay closing:', error);
             closeAllOverlays();
         }
+    }
+
+    // Initialize profession select dropdowns
+    if ($(".professions_select").length > 0) {
+        $(".professions_select").select2({
+            placeholder: "Select a profession",
+            allowClear: true,
+            ajax: {
+                url: baseUrl + "/professions/search",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term,
+                        page: params.page || 1
+                    };
+                },
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    
+                    return {
+                        results: $.map(data.items, function (item) {
+                            return {
+                                id: item.id,
+                                text: item.name
+                            };
+                        }),
+                        pagination: {
+                            more: (params.page * 30) < data.total_count
+                        }
+                    };
+                },
+                cache: true
+            },
+            escapeMarkup: function (markup) { return markup; },
+            minimumInputLength: 1,
+            templateResult: function (profession) {
+                if (profession.loading) return profession.text;
+                
+                var $container = $(
+                    "<div class='select2-result-repository clearfix'>" +
+                    "<div class='select2-result-repository__meta' style='display:flex;align-items:center' >" +
+                    "<div class='select2-result-repository__title'></div>" +
+                    "</div></div>"
+                );
+                
+                $container.find(".select2-result-repository__title").text(profession.text);
+                
+                return $container;
+            },
+            templateSelection: function (profession) {
+                return profession.text;
+            }
+        });
     }
 
     // ✅ ENHANCED MODAL CLOSING

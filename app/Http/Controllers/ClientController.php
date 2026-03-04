@@ -1065,7 +1065,92 @@ class ClientController extends Controller
         }
     }
 
+    /**
+     * Generate PDF for a client
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePdf($id)
+    {
+        try {
+            $client = Client::findOrFail($id);
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            return $pdfService->generateClientPdf($client);
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Client not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
 
+    /**
+     * Generate and download PDF for a client
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $client = Client::findOrFail($id);
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            $filename = 'client-' . $client->id . '-' . str_slug($client->first_name . '-' . $client->last_name) . '.pdf';
+            
+            return $pdfService->streamPdf('pdf.clients.template', [
+                'client' => $client,
+                'projects' => $client->projects ?? [],
+                'contracts' => $client->contracts ?? [],
+            ], $filename, false); // false = download attachment
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Client not found.'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate bulk PDFs for multiple clients
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'ids' => 'required|array',
+                'ids.*' => 'integer|exists:clients,id'
+            ]);
+            
+            $ids = $validatedData['ids'];
+            $clients = Client::whereIn('id', $ids)->get();
+            
+            $pdfService = app('App\\Services\\PdfService');
+            
+            // Generate combined report
+            $reportData = [
+                'title' => 'Clients Report',
+                'report_data' => [
+                    'clients' => $clients,
+                    'total_count' => $clients->count(),
+                    'active_count' => $clients->where('status', 1)->count(),
+                    'generated_date' => now()->format('Y-m-d H:i:s')
+                ]
+            ];
+            
+            return $pdfService->generateReportPdf('Clients Report', $reportData, 'pdf.reports.custom');
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'message' => 'Error generating bulk PDF: ' . $e->getMessage()], 500);
+        }
+    }
 
     public function verify_email(EmailVerificationRequest $request)
     {

@@ -23,9 +23,14 @@ class ContractSeeder extends Seeder
         $clients = Client::all();
         $projects = Project::all();
         $contractTypes = ContractType::all();
-        $workspaces = Workspace::all();
+        // Use workspace ID 1 only
+        $workspace = Workspace::find(1);
+        if (!$workspace) {
+            $this->command->error('Workspace ID 1 not found!');
+            return;
+        }
         
-        if ($users->isEmpty() || $clients->isEmpty() || $projects->isEmpty() || $contractTypes->isEmpty() || $workspaces->isEmpty()) {
+        if ($users->isEmpty() || $clients->isEmpty() || $projects->isEmpty() || $contractTypes->isEmpty()) {
             $this->command->error('Missing required data. Please ensure users, clients, projects, contract types, and workspaces exist.');
             return;
         }
@@ -33,7 +38,7 @@ class ContractSeeder extends Seeder
         // Sample contracts data in Arabic Yemeni style
         $contracts = [
             [
-                'workspace_id' => $workspaces->random()->id,
+                'workspace_id' => $workspace->id,
                 'title' => 'عقد بناء فندق السلام',
                 'value' => 5000000,
                 'start_date' => '2024-01-15',
@@ -61,7 +66,7 @@ class ContractSeeder extends Seeder
                 'invoice_reference' => null
             ],
             [
-                'workspace_id' => $workspaces->random()->id,
+                'workspace_id' => $workspace->id,
                 'title' => 'عقد تطوير مجمع تجاري الحكمة',
                 'value' => 8000000,
                 'start_date' => '2024-02-20',
@@ -89,7 +94,7 @@ class ContractSeeder extends Seeder
                 'invoice_reference' => null
             ],
             [
-                'workspace_id' => $workspaces->random()->id,
+                'workspace_id' => $workspace->id,
                 'title' => 'عقد بناء مدرسة الأمل الابتدائية',
                 'value' => 2000000,
                 'start_date' => '2024-03-10',
@@ -117,7 +122,7 @@ class ContractSeeder extends Seeder
                 'invoice_reference' => null
             ],
             [
-                'workspace_id' => $workspaces->random()->id,
+                'workspace_id' => $workspace->id,
                 'title' => 'عقد صيانة وتشغيل المباني الحكومية',
                 'value' => 1500000,
                 'start_date' => '2024-01-01',
@@ -151,7 +156,7 @@ class ContractSeeder extends Seeder
                 'invoice_reference' => null
             ],
             [
-                'workspace_id' => $workspaces->random()->id,
+                'workspace_id' => $workspace->id,
                 'title' => 'عقد توريد معدات البناء',
                 'value' => 3500000,
                 'start_date' => '2024-04-05',

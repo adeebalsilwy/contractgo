@@ -41,20 +41,45 @@ function idFormatter(value, row, index) {
 }
 
 function actionsFormatter(value, row, index) {
-    let actions = [
-        '<a href="' + baseUrl + '/contracts/' + row.id + '" class="btn btn-sm btn-info" title="' + label_view_details + '"><i class="bx bx-show"></i></a>',
-        '<a href="' + baseUrl + '/contracts/mind-map/' + row.id + '" class="btn btn-sm btn-primary mx-1" title="' + label_mind_map + '"><i class="bx bx-sitemap"></i></a>'
-    ];
+    console.log('actionsFormatter called for row:', row.id);
+    let actions = [];
     
+    // Add view details button
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '" class="btn btn-sm btn-info" title="' + label_view_details + '"><i class="bx bx-show"></i></a>');
+    
+    // Add edit button if user has permission
     if (row.can_edit) {
         actions.push('<a href="javascript:void(0);" class="edit-contract btn btn-sm btn-warning mx-1" data-bs-toggle="modal" data-bs-target="#edit_contract_modal" data-id="' + row.id + '" title="' + label_update + '"><i class="bx bx-edit"></i></a>');
     }
     
-    if (row.can_delete) {
-        actions.push('<button title="' + label_delete + '" type="button" class="btn btn-sm btn-danger delete" data-id="' + row.id + '" data-type="contracts" data-table="contracts_table"><i class="bx bx-trash"></i></button>');
+    // Add duplicate button if user has permission to create
+    if (row.can_create) {
+        actions.push('<a href="javascript:void(0);" class="duplicate btn btn-sm btn-secondary mx-1" data-id="' + row.id + '" data-title="' + row.title + '" data-type="contracts" data-table="contracts_table" title="' + label_duplicate + '"><i class="bx bx-copy"></i></a>');
     }
     
-    return actions.join('');
+    // Add archive/unarchive buttons based on workflow status
+    if (row.workflow_status === 'approved' && !row.is_archived) {
+        actions.push('<a href="javascript:void(0);" class="archive-contract btn btn-sm btn-dark mx-1" data-id="' + row.id + '" title="Archive Contract"><i class="bx bx-archive"></i></a>');
+    } else if (row.is_archived) {
+        actions.push('<a href="javascript:void(0);" class="unarchive-contract btn btn-sm btn-warning mx-1" data-id="' + row.id + '" title="Unarchive Contract"><i class="bx bx-unarchive"></i></a>');
+    }
+    
+    // Add delete button if user has permission
+    if (row.can_delete) {
+        actions.push('<button title="' + label_delete + '" type="button" class="btn btn-sm btn-danger delete mx-1" data-id="' + row.id + '" data-type="contracts" data-table="contracts_table"><i class="bx bx-trash"></i></button>');
+    }
+    
+    // Add mind map button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/mind-map" class="btn btn-sm btn-primary mx-1" title="' + label_mind_map + '"><i class="bx bx-sitemap"></i></a>');
+    
+    // Add generate PDF button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/generate-pdf" class="btn btn-sm btn-success mx-1" title="Generate PDF"><i class="bx bx-file"></i></a>');
+    
+    // Add generate contract PDF button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/generate-pdf" class="btn btn-sm btn-info mx-1" title="Download Contract PDF"><i class="bx bx-download"></i></a>');
+    
+    // Wrap all actions in a container for better styling
+    return '<div class="action-buttons d-flex justify-content-center">' + actions.join('') + '</div>';
 }
 if ($('#promisor_sign').length) {
     var canvas = document.getElementById('promisor_sign');

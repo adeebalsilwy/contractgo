@@ -113,75 +113,181 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <!-- Estimates Status -->
-                        <div class="col-md-6 mb-4">
-                            <h6 class="text-primary mb-3">
-                                <i class="bx bx-receipt me-1"></i>
-                                <?= get_label('estimates', 'Estimates') ?>
-                            </h6>
-                            <div class="d-flex flex-wrap gap-2">
-                                @php
-                                $possibleStatuses = ['sent', 'accepted', 'draft', 'declined', 'expired', 'not_specified'];
-                                $totalEstimates = array_sum(array_map(fn($status) => getStatusCount($status, 'estimate'), $possibleStatuses));
-                                @endphp
-                                <button type="button" class="btn btn-outline-success status-badge" data-status="" data-type="estimate">
-                                    {{ get_label('all','All') }}
-                                    <span class="badge bg-success ms-1">{{ getStatusCount('', 'estimate') }}</span>
-                                </button>
-                                @foreach($possibleStatuses as $status)
-                                @php
-                                $count = getStatusCount($status, 'estimate');
-                                $percentage = $totalEstimates > 0 ? round(($count / $totalEstimates) * 100, 1) : 0;
-                                @endphp
-                                <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="estimate">
-                                    {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
-                                    <span class="badge bg-{{ getStatusColor($status) }} ms-1">
-                                        {{ $count }}
-                                        @if($percentage > 0)
-                                        <small class="ms-1">({{ $percentage }}%)</small>
-                                        @endif
-                                    </span>
-                                </button>
-                                @endforeach
+                    <div class="tab-content" id="statusTabContent">
+                        <!-- All Documents Status -->
+                        <div class="tab-pane fade show active" id="all-tab-pane" role="tabpanel" aria-labelledby="all-tab">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="text-info mb-3">
+                                        <i class="bx bx-file me-1"></i>
+                                        <?= get_label('extracts', 'Extracts') ?>
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @php
+                                        $extractStatuses = ['sent', 'accepted', 'draft', 'declined', 'expired', 'not_specified'];
+                                        $totalExtracts = array_sum(array_map(fn($status) => getStatusCount($status, 'extract'), $extractStatuses));
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-info status-badge" data-status="" data-type="extract">
+                                            {{ get_label('all','All') }}
+                                            <span class="badge bg-info ms-1">{{ getStatusCount('', 'extract') }}</span>
+                                        </button>
+                                        @foreach($extractStatuses as $status)
+                                        @php
+                                        $count = getStatusCount($status, 'extract');
+                                        $percentage = $totalExtracts > 0 ? round(($count / $totalExtracts) * 100, 1) : 0;
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="extract">
+                                            {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
+                                            <span class="badge bg-{{ getStatusColor($status) }} ms-1">
+                                                {{ $count }}
+                                                @if($percentage > 0)
+                                                <small class="ms-1">({{ $percentage }}%)</small>
+                                                @endif
+                                            </span>
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="text-success mb-3">
+                                        <i class="bx bx-file-blank me-1"></i>
+                                        <?= get_label('invoices', 'Invoices') ?>
+                                    </h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @php
+                                        $invoiceStatuses = ['partially_paid', 'fully_paid', 'draft', 'cancelled', 'due', 'not_specified'];
+                                        $totalInvoices = array_sum(array_map(fn($status) => getStatusCount($status, 'invoice'), $invoiceStatuses));
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-success status-badge" data-status="" data-type="invoice">
+                                            {{ get_label('all','All') }}
+                                            <span class="badge bg-success ms-1">{{ getStatusCount('', 'invoice') }}</span>
+                                        </button>
+                                        @foreach($invoiceStatuses as $status)
+                                        @php
+                                        $count = getStatusCount($status, 'invoice');
+                                        $percentage = $totalInvoices > 0 ? round(($count / $totalInvoices) * 100, 1) : 0;
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="invoice">
+                                            {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
+                                            <span class="badge bg-{{ getStatusColor($status) }} ms-1">
+                                                {{ $count }}
+                                                @if($percentage > 0)
+                                                <small class="ms-1">({{ $percentage }}%)</small>
+                                                @endif
+                                            </span>
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- Invoices Status -->
-                        <div class="col-md-6 mb-4">
-                            <h6 class="text-success mb-3">
-                                <i class="bx bx-file me-1"></i>
-                                <?= get_label('invoices', 'Invoices') ?>
-                            </h6>
-                            <div class="d-flex flex-wrap gap-2">
-                                @php
-                                $possibleStatuses = ['partially_paid', 'fully_paid', 'draft', 'cancelled', 'due', 'not_specified'];
-                                $totalInvoices = array_sum(array_map(fn($status) => getStatusCount($status, 'invoice'), $possibleStatuses));
-                                @endphp
-                                <button type="button" class="btn btn-outline-success status-badge" data-status="" data-type="invoice">
-                                    {{ get_label('all','All') }}
-                                    <span class="badge bg-success ms-1">{{ getStatusCount('', 'invoice') }}</span>
-                                </button>
-                                @foreach($possibleStatuses as $status)
-                                @php
-                                $count = getStatusCount($status, 'invoice');
-                                $percentage = $totalInvoices > 0 ? round(($count / $totalInvoices) * 100, 1) : 0;
-                                @endphp
-                                <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="invoice">
-                                    {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
-                                    <span class="badge bg-{{ getStatusColor($status) }} ms-1">
-                                        {{ $count }}
-                                        @if($percentage > 0)
-                                        <small class="ms-1">({{ $percentage }}%)</small>
-                                        @endif
-                                    </span>
-                                </button>
-                                @endforeach
+                        <!-- Extracts Only Status -->
+                        <div class="tab-pane fade" id="extracts-tab-pane" role="tabpanel" aria-labelledby="extracts-tab">
+                            <div class="row justify-content-center">
+                                <div class="col-md-8">
+                                    <h6 class="text-info mb-3 text-center">
+                                        <i class="bx bx-file me-1"></i>
+                                        <?= get_label('extracts_status', 'Extracts Status') ?>
+                                    </h6>
+                                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                                        @php
+                                        $extractStatuses = ['sent', 'accepted', 'draft', 'declined', 'expired', 'not_specified'];
+                                        $totalExtracts = array_sum(array_map(fn($status) => getStatusCount($status, 'extract'), $extractStatuses));
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-info status-badge" data-status="" data-type="extract">
+                                            {{ get_label('all','All') }}
+                                            <span class="badge bg-info ms-1">{{ getStatusCount('', 'extract') }}</span>
+                                        </button>
+                                        @foreach($extractStatuses as $status)
+                                        @php
+                                        $count = getStatusCount($status, 'extract');
+                                        $percentage = $totalExtracts > 0 ? round(($count / $totalExtracts) * 100, 1) : 0;
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="extract">
+                                            {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
+                                            <span class="badge bg-{{ getStatusColor($status) }} ms-1">
+                                                {{ $count }}
+                                                @if($percentage > 0)
+                                                <small class="ms-1">({{ $percentage }}%)</small>
+                                                @endif
+                                            </span>
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Invoices Only Status -->
+                        <div class="tab-pane fade" id="invoices-tab-pane" role="tabpanel" aria-labelledby="invoices-tab">
+                            <div class="row justify-content-center">
+                                <div class="col-md-8">
+                                    <h6 class="text-success mb-3 text-center">
+                                        <i class="bx bx-file-blank me-1"></i>
+                                        <?= get_label('invoices_status', 'Invoices Status') ?>
+                                    </h6>
+                                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                                        @php
+                                        $invoiceStatuses = ['partially_paid', 'fully_paid', 'draft', 'cancelled', 'due', 'not_specified'];
+                                        $totalInvoices = array_sum(array_map(fn($status) => getStatusCount($status, 'invoice'), $invoiceStatuses));
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-success status-badge" data-status="" data-type="invoice">
+                                            {{ get_label('all','All') }}
+                                            <span class="badge bg-success ms-1">{{ getStatusCount('', 'invoice') }}</span>
+                                        </button>
+                                        @foreach($invoiceStatuses as $status)
+                                        @php
+                                        $count = getStatusCount($status, 'invoice');
+                                        $percentage = $totalInvoices > 0 ? round(($count / $totalInvoices) * 100, 1) : 0;
+                                        @endphp
+                                        <button type="button" class="btn btn-outline-{{ getStatusColor($status) }} status-badge" data-status="{{ $status }}" data-type="invoice">
+                                            {{ get_label($status, ucfirst(str_replace('_', ' ', $status))) }}
+                                            <span class="badge bg-{{ getStatusColor($status) }} ms-1">
+                                                {{ $count }}
+                                                @if($percentage > 0)
+                                                <small class="ms-1">({{ $percentage }}%)</small>
+                                                @endif
+                                            </span>
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Professional Tabs for Documents Separation -->
+    <div class="card mb-4 shadow-sm border-0 rounded-3">
+        <div class="card-header bg-white border-bottom border-2 rounded-top-3">
+            <ul class="nav nav-tabs card-header-tabs nav-tabs-bordered" id="documentsTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active d-flex align-items-center px-4 py-3" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-tab-pane" type="button" role="tab" aria-controls="all-tab-pane" aria-selected="true">
+                        <i class="bx bx-receipt me-2 fs-5"></i>
+                        <span class="fw-medium"><?= get_label('all_documents', 'All Documents') ?></span>
+                        <span class="badge bg-primary ms-2" id="all-count">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center px-4 py-3" id="extracts-tab" data-bs-toggle="tab" data-bs-target="#extracts-tab-pane" type="button" role="tab" aria-controls="extracts-tab-pane" aria-selected="false">
+                        <i class="bx bx-file me-2 fs-5"></i>
+                        <span class="fw-medium"><?= get_label('extracts', 'Extracts') ?></span>
+                        <span class="badge bg-info ms-2" id="extracts-count">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center px-4 py-3" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices-tab-pane" type="button" role="tab" aria-controls="invoices-tab-pane" aria-selected="false">
+                        <i class="bx bx-file-blank me-2 fs-5"></i>
+                        <span class="fw-medium"><?= get_label('invoices', 'Invoices') ?></span>
+                        <span class="badge bg-success ms-2" id="invoices-count">0</span>
+                    </button>
+                </li>
+            </ul>
         </div>
     </div>
     
@@ -435,12 +541,87 @@
             // Export functionality
             $('#export-estimates-invoices').on('click', () => this.exportData());
             
+            // Tab change handling
+            $('#documentsTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const tabId = $(e.target).attr('id');
+                let documentType = '';
+                let isExtract = null; // Changed to null to differentiate from false
+                
+                if (tabId === 'extracts-tab') {
+                    isExtract = true;
+                    documentType = 'estimate'; // Extracts are stored as estimates
+                } else if (tabId === 'invoices-tab') {
+                    isExtract = false;
+                    documentType = 'invoice';
+                }
+                
+                // Set type filter based on tab
+                if (documentType) {
+                    $('#type_filter').val(documentType);
+                } else {
+                    $('#type_filter').val(''); // All documents
+                }
+                
+                // Store extract filter state
+                $('#table').data('isExtract', isExtract);
+                
+                // Reset status filter when switching tabs
+                $('#hidden_status').val('');
+                $('.status-badge').removeClass('active');
+                
+                $('#table').bootstrapTable('refresh');
+                
+                // Update status badges for current tab
+                $('.status-badge').each(function() {
+                    const badgeType = $(this).data('type');
+                    if (tabId === 'all-tab' || 
+                        (tabId === 'extracts-tab' && badgeType === 'extract') || 
+                        (tabId === 'invoices-tab' && badgeType === 'invoice')) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+                
+                // Highlight the "All" badge for the current tab type
+                setTimeout(() => {
+                    if (tabId === 'extracts-tab') {
+                        $('.status-badge[data-type="extract"][data-status=""]').addClass('active');
+                    } else if (tabId === 'invoices-tab') {
+                        $('.status-badge[data-type="invoice"][data-status=""]').addClass('active');
+                    } else {
+                        $('.status-badge[data-status=""]').first().addClass('active');
+                    }
+                }, 100);
+            });
+            
             // Status badge clicks
             $(document).on('click', '.status-badge', function(e) {
                 const status = $(this).data('status');
                 const type = $(this).data('type');
                 $('#hidden_status').val(status);
-                $('#type_filter').val(type).trigger('change');
+                
+                // Set type filter based on current tab and badge type
+                const activeTab = $('.nav-link.active').attr('id');
+                let documentType = '';
+                
+                if (activeTab === 'extracts-tab') {
+                    documentType = 'estimate'; // Extracts are stored as estimates
+                } else if (activeTab === 'invoices-tab') {
+                    documentType = 'invoice';
+                } else {
+                    // All tab - set type based on badge type
+                    if (type === 'extract') {
+                        documentType = 'estimate';
+                    } else if (type === 'invoice') {
+                        documentType = 'invoice';
+                    }
+                }
+                
+                if (documentType) {
+                    $('#type_filter').val(documentType);
+                }
+                
                 $('#table').bootstrapTable('refresh');
                 
                 // Update active state
@@ -464,10 +645,20 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        $('#total-estimates').text(response.data.estimates || 0);
-                        $('#total-invoices').text(response.data.invoices || 0);
+                        const extractsCount = response.data.extracts || 0;
+                        const estimatesCount = response.data.estimates || 0;
+                        const invoicesCount = response.data.invoices || 0;
+                        const totalCount = extractsCount + estimatesCount + invoicesCount;
+                        
+                        $('#total-estimates').text(estimatesCount + extractsCount);
+                        $('#total-invoices').text(invoicesCount);
                         $('#pending-documents').text(response.data.pending || 0);
                         $('#total-revenue').text(new Intl.NumberFormat().format(response.data.total_revenue || 0));
+                        
+                        // Update tab badges
+                        $('#all-count').text(totalCount);
+                        $('#extracts-count').text(extractsCount);
+                        $('#invoices-count').text(invoicesCount);
                         
                         // Add animation effects
                         $('#estimates-invoices-stats').find('h3').each(function() {
@@ -650,7 +841,9 @@
         
         // Get query parameters
         getQueryParams: function(params) {
-            return {
+            const isExtract = $('#table').data('isExtract');
+            
+            const queryParams = {
                 "types": $('#type_filter').val(),
                 "status": $('#hidden_status').val(),
                 "client_ids": $('#client_filter').val(),
@@ -668,6 +861,13 @@
                 order: params.order || 'desc',
                 search: params.search || $('#estimates-invoices-search').val()
             };
+            
+            // Only add is_extract parameter if it's explicitly set
+            if (isExtract !== undefined && isExtract !== null) {
+                queryParams.is_extract = isExtract ? 1 : 0;
+            }
+            
+            return queryParams;
         }
     };
     

@@ -46,7 +46,7 @@
                               <td><a href="{{route('tasks.info', ['id' => $task->id])}}" > {{ $task->title }} </a></td>
                               <td>{!! $task->description ? Str::limit($task->description, 50) : '-' !!}</td>
                               <td>{{ $task->project->title }}</td>
-                              <td><span class="badge bg-{{ $task->status->color }}">{{ $task->status->title }}</span>
+                              <td><span class="badge bg-{{ $task->status && is_object($task->status) ? $task->status->color : 'secondary' }}">{{ $task->status && is_object($task->status) ? $task->status->title : 'N/A' }}</span>
                               </td>
                               <td>
                                   <span class="badge bg-{{ $task->priority ? $task->priority->color : '' }}">

@@ -10,13 +10,24 @@ class YemeniProjectsSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * NOTE: Projects are created in ModernRealEstateCompanySeeder to ensure only 5 projects exist as per requirements.
+     * This seeder will only verify the projects exist.
      */
     public function run(): void
     {
-        // Get users for project creators
-        $users = User::all();
+        // Verify that exactly 5 projects exist in workspace 1
+        $existingProjects = Project::where('workspace_id', 1)->get();
         
-        // Define diverse Yemeni project data
+        if ($existingProjects->count() >= 5) {
+            $this->command->info('Found ' . $existingProjects->count() . ' projects in workspace 1. Skipping creation.');
+            return;
+        }
+        
+        // Only create projects if they don't exist
+        $users = User::all();
+        $clients = Client::all();
+        
+        // Define exactly 5 Yemeni project data as per requirements
         $projects = [
             [
                 'title' => 'مشروع توسعة شارع صنعاء - تعز',
@@ -35,36 +46,12 @@ class YemeniProjectsSeeder extends Seeder
                 'end_date' => now()->addDays(180),
             ],
             [
-                'title' => 'مشروع صيانة شبكة الكهرباء - عدن',
-                'description' => 'مشروع صيانة وتطوير شبكة الكهرباء في مدينة عدن',
-                'workspace_id' => 1,
-                'budget' => 35000000.00,
-                'start_date' => now()->subDays(400),
-                'end_date' => now()->subDays(30),
-            ],
-            [
                 'title' => 'مشروع تطوير ميناء الحديدة',
                 'description' => 'مشروع تطوير وتوسعة ميناء الحديدة',
                 'workspace_id' => 1,
                 'budget' => 120000000.00,
                 'start_date' => now()->subDays(60),
                 'end_date' => now()->addDays(540),
-            ],
-            [
-                'title' => 'مشروع توسعة مطار صنعاء',
-                'description' => 'مشروع توسعة وتطوير مدرجات مطار صنعاء الدولي',
-                'workspace_id' => 1,
-                'budget' => 85000000.00,
-                'start_date' => now()->subDays(90),
-                'end_date' => now()->addDays(450),
-            ],
-            [
-                'title' => 'مشروع تطوير ميناء عدن',
-                'description' => 'مشروع تطوير وتحديث ميناء عدن',
-                'workspace_id' => 1,
-                'budget' => 95000000.00,
-                'start_date' => now()->subDays(120),
-                'end_date' => now()->addDays(600),
             ],
             [
                 'title' => 'مشروع توسعة مستشفى الجمهورية - صنعاء',
@@ -82,37 +69,34 @@ class YemeniProjectsSeeder extends Seeder
                 'start_date' => now()->subDays(75),
                 'end_date' => now()->addDays(360),
             ],
-            [
-                'title' => 'مشروع تطوير مطار المكلا',
-                'description' => 'مشروع تطوير وتحديث مطار المكلا',
-                'workspace_id' => 1,
-                'budget' => 40000000.00,
-                'start_date' => now()->subDays(100),
-                'end_date' => now()->addDays(300),
-            ],
-            [
-                'title' => 'مشروع تطوير ميناء المخا',
-                'description' => 'مشروع تطوير ميناء المخا في محافظة الحديدة',
-                'workspace_id' => 1,
-                'budget' => 30000000.00,
-                'start_date' => now()->subDays(200),
-                'end_date' => now()->addDays(200),
-            ],
         ];
 
         foreach ($projects as $index => $projectData) {
-            $project = Project::create([
-                'title' => $projectData['title'],
-                'description' => $projectData['description'],
-                'workspace_id' => $projectData['workspace_id'],
-                'user_id' => $users->random()->id,
-                'client_id' => rand(1, min(10, User::count())),
-                'status' => 'active',
-                'budget' => $projectData['budget'],
-                'start_date' => $projectData['start_date'],
-                'end_date' => $projectData['end_date'],
-                'created_by' => $users->random()->id,
-            ]);
+            $existingProject = Project::where('title', $projectData['title'])
+                                     ->where('workspace_id', $projectData['workspace_id'])
+                                     ->first();
+            
+            if (!$existingProject) {
+                $project = Project::create([
+                    'title' => $projectData['title'],
+                    'description' => $projectData['description'],
+                    'workspace_id' => $projectData['workspace_id'],
+                    'user_id' => 'u_' . $users->random()->id,
+                    'client_id' => 'c_' . $clients->random()->id,
+                    'status' => 'active',
+                    'budget' => $projectData['budget'],
+                    'start_date' => $projectData['start_date'],
+                    'end_date' => $projectData['end_date'],
+                    'created_by' => $users->random()->id,
+                    'status_id' => rand(1, 3),
+                    'priority_id' => rand(1, 3),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
+        
+        $finalCount = Project::where('workspace_id', 1)->count();
+        $this->command->info('Ensured ' . $finalCount . ' projects exist in workspace 1.');
     }
 }

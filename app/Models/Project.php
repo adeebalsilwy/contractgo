@@ -16,6 +16,7 @@ class Project extends Model implements HasMedia
 
     protected $fillable = [
         'title',
+        'status',
         'status_id',
         'priority_id',
         'budget',
@@ -57,7 +58,14 @@ class Project extends Model implements HasMedia
     }
     public function tasks()
     {
-        return $this->hasMany(Task::class)->where('tasks.workspace_id', getWorkspaceId());
+        return $this->hasMany(Task::class);
+    }
+
+    // Enhanced relationship to get all tasks related to this project and its contracts
+    public function allRelatedTasks()
+    {
+        return $this->hasManyThrough(Task::class, Contract::class, 'project_id', 'contract_id', 'id', 'id')
+            ->where('tasks.workspace_id', getWorkspaceId());
     }
 
     public function users()
@@ -70,10 +78,23 @@ class Project extends Model implements HasMedia
         return $this->belongsToMany(Client::class, 'project_client');
     }
 
+    // Enhanced relationship to get all clients related to this project and its contracts
+    public function allRelatedClients()
+    {
+        return $this->belongsToMany(Client::class, 'contracts', 'project_id', 'client_id')
+            ->where('contracts.workspace_id', getWorkspaceId());
+    }
+
     public function status()
     {
-        return $this->belongsTo(Status::class);
+        return $this->belongsTo(Status::class, 'status_id');
     }
+    public function statusRelation()
+    {
+        return $this->belongsTo(Status::class, 'status_id');
+    }
+    
+
 
     public function priority()
     {
@@ -140,5 +161,12 @@ class Project extends Model implements HasMedia
         // For testing purposes, remove workspace filter
         return $this->hasMany(Contract::class);
         // return $this->hasMany(Contract::class)->where('contracts.workspace_id', getWorkspaceId());
+    }
+    
+    // Enhanced relationship to get all estimates/invoices related to this project through contracts
+    public function projectEstimatesInvoices()
+    {
+        return $this->hasManyThrough(EstimatesInvoice::class, Contract::class, 'project_id', 'contract_id', 'id', 'id')
+            ->where('estimates_invoices.workspace_id', getWorkspaceId());
     }
 }

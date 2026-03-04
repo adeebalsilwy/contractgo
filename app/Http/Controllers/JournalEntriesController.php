@@ -10,13 +10,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use App\Http\Controllers\Controller;
+use App\Services\OnyxProService;
+use App\Services\WorkflowAuditService;
 
 class JournalEntriesController extends Controller
 {
     protected $workspace;
     protected $user;
+    protected $onyxProService;
+    protected $workflowAuditService;
 
-    public function __construct()
+    public function __construct(OnyxProService $onyxProService, WorkflowAuditService $workflowAuditService)
     {
         $this->middleware(function ($request, $next) {
             // fetch session and use it in entire class with constructor
@@ -24,6 +28,9 @@ class JournalEntriesController extends Controller
             $this->user = getAuthenticatedUser();
             return $next($request);
         });
+        
+        $this->onyxProService = $onyxProService;
+        $this->workflowAuditService = $workflowAuditService;
     }
 
     /**
@@ -304,7 +311,7 @@ class JournalEntriesController extends Controller
     }
 
     /**
-     * Post a journal entry to accounting system (simulate Onyx Pro integration).
+     * Post a journal entry to accounting system (Onyx Pro integration).
      */
     public function postToAccounting($id)
     {
@@ -316,52 +323,69 @@ class JournalEntriesController extends Controller
                 abort(403, 'Unauthorized to post journal entry');
             }
 
-            // Simulate posting to Onyx Pro
-            $journalEntry->update([
-                'status' => 'posted',
-                'posted_at' => now(),
-                'posted_by' => $this->user->id,
-                'posting_notes' => 'Posted to Onyx Pro accounting system',
-                'integration_data' => array_merge($journalEntry->integration_data ?? [], [
-                    'onyx_pro_synced' => true,
-                    'onyx_pro_reference' => 'ONYX-' . time(), // Simulated Onyx Pro reference
-                    'sync_date' => now()->toISOString()
-                ])
-            ]);
+            // Use Onyx Pro service to sync
+            $result = $this->onyxProService->syncJournalEntry($journalEntry);
 
-            Session::flash('message', 'Journal entry posted to accounting system successfully.');
-            return response()->json(['error' => false, 'message' => 'Journal entry posted to accounting system successfully.']);
+            if ($result['success']) {
+                // Log the action in audit trail
+                if ($journalEntry->contract) {
+                    $this->workflowAuditService->logJournalEntry($journalEntry->contract, $journalEntry);
+                }
+
+                Session::flash('message', 'Journal entry posted to Onyx Pro successfully. Entry Number: ' . ($result['entry_number'] ?? 'N/A'));
+                return response()->json(['error' => false, 'message' => 'Journal entry posted to Onyx Pro successfully.' . ($result['entry_number'] ? ' Entry Number: ' . $result['entry_number'] : '')]);
+            } else {
+                Session::flash('error', 'Failed to post to Onyx Pro: ' . $result['error']);
+                return response()->json(['error' => true, 'message' => 'Failed to post to Onyx Pro: ' . $result['error']]);
+            }
         } catch (\Exception $e) {
             return response()->json(['error' => true, 'message' => $e->getMessage()]);
         }
     }
 
     /**
-     * Sync with Onyx Pro accounting system.
+     * Sync pending journal entries with Onyx Pro accounting system.
      */
     public function syncWithOnyxPro()
     {
         try {
-            // In a real implementation, this would connect to the Onyx Pro API
-            // For now, we'll simulate the sync process
-            
             $pendingEntries = JournalEntry::where('status', '!=', 'posted')
-                                         ->whereJsonContains('integration_data->onyx_pro_synced', false)
+                                         ->where(function($query) {
+                                             $query->whereNull('integration_data->onyx_pro_synced')
+                                                   ->orWhereJsonContains('integration_data->onyx_pro_synced', false);
+                                         })
                                          ->get();
 
+            $syncedCount = 0;
+            $failedCount = 0;
+
             foreach ($pendingEntries as $entry) {
-                // Simulate sync with Onyx Pro
-                $entry->update([
-                    'integration_data' => array_merge($entry->integration_data ?? [], [
-                        'onyx_pro_synced' => true,
-                        'onyx_pro_reference' => 'ONYX-' . time() . '-' . $entry->id,
-                        'sync_date' => now()->toISOString()
-                    ])
-                ]);
+                $result = $this->onyxProService->syncJournalEntry($entry);
+                
+                if ($result['success']) {
+                    $syncedCount++;
+                    // Log the action
+                    if ($entry->contract) {
+                        $this->workflowAuditService->logJournalEntry($entry->contract, $entry);
+                    }
+                } else {
+                    $failedCount++;
+                    \Log::warning('Failed to sync journal entry #' . $entry->id . ': ' . $result['error']);
+                }
             }
 
-            Session::flash('message', count($pendingEntries) . ' journal entries synced with Onyx Pro successfully.');
-            return response()->json(['error' => false, 'message' => count($pendingEntries) . ' journal entries synced with Onyx Pro successfully.']);
+            $message = "{$syncedCount} journal entries synced with Onyx Pro successfully.";
+            if ($failedCount > 0) {
+                $message .= " {$failedCount} entries failed to sync.";
+            }
+
+            Session::flash('message', $message);
+            return response()->json([
+                'error' => false, 
+                'message' => $message,
+                'synced' => $syncedCount,
+                'failed' => $failedCount
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => true, 'message' => $e->getMessage()]);
         }

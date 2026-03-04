@@ -25,7 +25,16 @@ class Language
      */
     public function handle($request, Closure $next)
     {
-        $this->app->setLocale(session('my_locale', config('app.locale')));
+        $locale = session('my_locale', config('app.locale'));
+        $this->app->setLocale($locale);
+        
+        // Set text direction for RTL languages
+        $rtlLanguages = ['ar', 'fa', 'he', 'ur'];
+        if (in_array($locale, $rtlLanguages)) {
+            session(['text_direction' => 'rtl']);
+        } else {
+            session(['text_direction' => 'ltr']);
+        }
 
         return $next($request);
     }

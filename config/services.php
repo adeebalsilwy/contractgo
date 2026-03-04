@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'onyx_pro' => [
+        'base_url' => env('ONYX_PRO_BASE_URL', 'http://localhost:8080'),
+        'api_key' => env('ONYX_PRO_API_KEY', ''),
+        'enabled' => env('ONYX_PRO_ENABLED', false),
+    ],
+
 ];

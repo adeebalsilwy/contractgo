@@ -5,11 +5,17 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Client;
+use App\Models\Item;
+use App\Models\Project;
+use App\Models\Status;
+use App\Models\Priority;
 use App\Models\Contract;
 use App\Models\Workspace;
+use App\Models\Profession;
 use App\Models\ContractType;
 use Illuminate\Http\Request;
 use App\Services\DeletionService;
+use App\Services\TemplateService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Session;
@@ -20,7 +26,9 @@ class ContractsController extends Controller
 {
     protected $workspace;
     protected $user;
-    public function __construct()
+    protected $templateService;
+    
+    public function __construct(TemplateService $templateService)
     {
         $this->middleware(function ($request, $next) {
             // fetch session and use it in entire class with constructor
@@ -28,6 +36,8 @@ class ContractsController extends Controller
             $this->user = getAuthenticatedUser();
             return $next($request);
         });
+        
+        $this->templateService = $templateService;
     }
     public function index(Request $request)
     {
@@ -38,27 +48,35 @@ class ContractsController extends Controller
 
     public function create()
     {
-        $clients = Client::where('workspace_id', $this->workspace->id)->get();
+        $clients = $this->workspace->clients()->with('profession')->get();
         $projects = $this->workspace->projects()->get();
         $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
-        $users = User::where('workspace_id', $this->workspace->id)->get();
+        $users = $this->workspace->users()->get();
         $extracts = $this->workspace->estimates_invoices()->whereNull('contract_id')->get();
-        
-        return view('contracts.create', compact('clients', 'projects', 'contractTypes', 'users', 'extracts'));
+        $professions = Profession::where('workspace_id', $this->workspace->id)->get();
+        $statuses = Status::all(); // Statuses are not workspace-specific
+        $priorities = Priority::all(); // Priorities are not workspace-specific
+        $items = Item::where('workspace_id', $this->workspace->id)->with('profession', 'unit')->get();
+
+        // Get all contract quantities for import functionality
+        $contractQuantities = \App\Models\ContractQuantity::with(['contract.client', 'item'])->get();
+
+        return view('contracts.create_professional', compact('clients', 'projects', 'contractTypes', 'users', 'extracts', 'professions', 'statuses', 'priorities', 'items', 'contractQuantities'));
     }
 
     public function edit($id)
     {
         $contract = Contract::findOrFail($id);
-        $clients = Client::where('workspace_id', $this->workspace->id)->get();
+        $clients = Client::where('workspace_id', $this->workspace->id)->with('profession')->get();
         $projects = $this->workspace->projects()->get();
         $contractTypes = ContractType::forWorkspace($this->workspace->id)->get();
-        $users = User::where('workspace_id', $this->workspace->id)->get();
+        $users = $this->workspace->users()->get();
         $extracts = $this->workspace->estimates_invoices()->where(function($query) use ($id) {
             $query->whereNull('contract_id')->orWhere('contract_id', $id);
         })->get();
+        $professions = Profession::where('workspace_id', $this->workspace->id)->get();
         
-        return view('contracts.edit', compact('contract', 'clients', 'projects', 'contractTypes', 'users', 'extracts'));
+        return view('contracts.edit', compact('contract', 'clients', 'projects', 'contractTypes', 'users', 'extracts', 'professions'));
     }
 
     public function dashboard()
@@ -217,8 +235,63 @@ class ContractsController extends Controller
             $formFields['value'] = str_replace(',', '', $request->input('value'));
             $formFields['workspace_id'] = $this->workspace->id;
             $formFields['created_by'] = isClient() ? 'c_' . $this->user->id : 'u_' . $this->user->id;
+            $formFields['is_calculated_from_extracts'] = false;
 
             if ($contract = Contract::create($formFields)) {
+                // Apply default template to the contract
+                $this->templateService->applyDefaultContractTemplate($contract);
+                
+                // Apply default workflow assignments if requested
+                if ($request->has('apply_default_workflow') && $request->apply_default_workflow) {
+                    $this->assignDefaultWorkflow($contract);
+                }
+                
+                // Handle contract items
+                if ($request->has('items') && is_array($request->items)) {
+                    foreach ($request->items as $itemData) {
+                        if (isset($itemData['item_id']) && $itemData['item_id']) {
+                            $item = Item::find($itemData['item_id']);
+                            if ($item) {
+                                $quantity = floatval($itemData['quantity'] ?? 0);
+                                $unitPrice = floatval($itemData['unit_price'] ?? $item->effective_price ?? 0);
+                                $total = $quantity * $unitPrice;
+                                
+                                $contractQuantity = ContractQuantity::create([
+                                    'contract_id' => $contract->id,
+                                    'user_id' => $this->user->id,
+                                    'workspace_id' => $this->workspace->id,
+                                    'item_description' => $itemData['description'] ?? $item->title,
+                                    'requested_quantity' => $quantity,
+                                    'approved_quantity' => $quantity,
+                                    'unit' => $itemData['unit'] ?? $item->unit->title ?? '',
+                                    'unit_price' => $unitPrice,
+                                    'total_amount' => $total,
+                                    'status' => 'approved',
+                                    'submitted_at' => now(),
+                                    'approved_rejected_at' => now(),
+                                    'approved_rejected_by' => $this->user->id,
+                                    'approval_rejection_notes' => 'Auto-approved during contract creation'
+                                ]);
+                                
+                                // Create audit trail
+                                ContractPriceAudit::create([
+                                    'contract_id' => $contract->id,
+                                    'user_id' => $this->user->id,
+                                    'workspace_id' => $this->workspace->id,
+                                    'item_description' => $itemData['description'] ?? $item->title,
+                                    'old_unit_price' => null,
+                                    'new_unit_price' => $unitPrice,
+                                    'quantity' => $quantity,
+                                    'old_total_amount' => null,
+                                    'new_total_amount' => $total,
+                                    'change_reason' => 'Contract item created',
+                                    'change_type' => 'creation'
+                                ]);
+                            }
+                        }
+                    }
+                }
+                
                 // Handle extract linking
                 if ($request->has('extracts') && is_array($request->extracts)) {
                     foreach ($request->extracts as $extractId) {
@@ -344,8 +417,7 @@ class ContractsController extends Controller
             $formFields = $request->validate([
                 'id' => 'required|exists:contracts,id',
                 'title' => ['required'],
-                'value' => [
-                    'required',
+                'value' => [  // Note: We will calculate value from extracts instead of accepting user input
                     function ($attribute, $value, $fail) {
                         $error = validate_currency_format($value, 'value');
                         if ($error) {
@@ -389,15 +461,24 @@ class ContractsController extends Controller
             $formFields['start_date'] = format_date($formFields['start_date'], false, $isApi ? 'Y-m-d' : app('php_date_format'), 'Y-m-d');
             $formFields['end_date'] = format_date($formFields['end_date'], false, $isApi ? 'Y-m-d' : app('php_date_format'), 'Y-m-d');
 
-            // Clean currency value
-            $formFields['value'] = str_replace(',', '', $request->input('value'));
+            // Calculate contract value from associated extracts (invoices/estimates) instead of accepting user input
+            // Only update value if no extracts are associated (to preserve existing behavior for contracts without extracts)
+            $totalExtractValue = $contract->total_extract_value;
+            if ($totalExtractValue > 0) {
+                $formFields['value'] = $totalExtractValue; // Override with calculated value
+                $formFields['is_calculated_from_extracts'] = true; // Mark that value is calculated from extracts
+            } else {
+                // If no extracts exist, allow user input but clean it
+                $formFields['value'] = str_replace(',', '', $request->input('value')); // Clean currency value
+                $formFields['is_calculated_from_extracts'] = false; // Mark that value is manually entered
+            }
 
             // Update the contract
             if ($contract->update($formFields)) {
                 // Handle extract linking/unlinking
                 if ($request->has('extracts') && is_array($request->extracts)) {
                     // Get currently linked extracts
-                    $currentExtractIds = $contract->estimates->pluck('id')->toArray();
+                    $currentExtractIds = $contract->estimatesInvoices->pluck('id')->toArray(); // Changed to use estimatesInvoices
                     $newExtractIds = $request->extracts;
                     
                     // Unlink extracts that were removed
@@ -652,6 +733,7 @@ class ContractsController extends Controller
                     'project' => "<a href='" . route('projects.info', ['id' => $contract->project_id]) . "'>{$contract->project_title}</a>",
                     'contract_type' => $contract->contract_type,
                     'description' => $contract->description,
+                    'progress_percentage' => $contract->progress_percentage . '%',
                     'promisor_sign' => $promisor_sign_status,
                     'promisee_sign' => $promisee_sign_status,
                     'status' => $statusBadge,
@@ -1049,11 +1131,20 @@ class ContractsController extends Controller
         ]);
         
         // Load related tasks - get tasks associated with the project that this contract is linked to
-        $tasks = $contract->project ? $contract->project->tasks()->with(['status', 'priority', 'users', 'clients'])->get() : collect();
+        $tasks = collect();
+        $projectUsers = collect();
+        $projectClients = collect();
         
-        // Load related users/clients for project
-        $projectUsers = $contract->project ? $contract->project->users : collect();
-        $projectClients = $contract->project ? $contract->project->clients : collect();
+        if ($contract->project) {
+            // Refresh the project with the needed relationships to avoid collection conflicts
+            $freshProject = Project::with(['tasks.status', 'tasks.priority', 'tasks.users'])->find($contract->project->id);
+            // Filter tasks by workspace
+            $tasks = $freshProject ? $freshProject->tasks->where('workspace_id', $this->workspace->id) : collect();
+            
+            // Make sure we have fresh data for users and clients
+            $projectUsers = $freshProject ? $freshProject->users : collect();
+            $projectClients = $freshProject ? $freshProject->clients : collect();
+        }
         
         // Load statuses and priorities for tasks
         $statuses = app('App\Http\Controllers\StatusController')->getStatuses('task');
@@ -1068,23 +1159,23 @@ class ContractsController extends Controller
     public function mind_map($id)
     {
         $contract = Contract::with([
-            'client', 
-            'project', 
-            'contract_type', 
-            'siteSupervisor', 
-            'quantityApprover', 
-            'accountant', 
-            'reviewer', 
-            'finalApprover',
-            'createdBy',
-            'archivedBy',
-            'quantities',
-            'approvals',
-            'amendments',
-            'journalEntries'
+            'client:id,first_name,last_name,email,phone', 
+            'project:id,title,description', 
+            'contract_type:id,type', 
+            'siteSupervisor:id,first_name,last_name,email', 
+            'quantityApprover:id,first_name,last_name,email', 
+            'accountant:id,first_name,last_name,email', 
+            'reviewer:id,first_name,last_name,email', 
+            'finalApprover:id,first_name,last_name,email',
+            'createdBy:id,first_name,last_name,email',
+            'archivedBy:id,first_name,last_name,email',
+            'quantities:id,contract_id,item_description,requested_quantity,unit_price',
+            'approvals:id,contract_id,status',
+            'amendments:id,contract_id,amendment_type,status,created_at',
+            'journalEntries:id,contract_id,entry_number,debit_amount,created_at'
         ])->findOrFail($id);
         
-        // Load related module counts
+        // Load related module counts with proper handling
         $contract->loadCount([
             'quantities',
             'approvals',
@@ -1092,8 +1183,24 @@ class ContractsController extends Controller
             'journalEntries as journal_entries_count'
         ]);
         
-        // Load related tasks - get tasks associated with the project that this contract is linked to
-        $tasks = $contract->project ? $contract->project->tasks()->with(['status', 'priority', 'users', 'clients'])->get() : collect();
+        // Load related tasks with comprehensive data
+        $tasks = collect();
+        if ($contract->project) {
+            // Refresh the project with the needed relationships to avoid collection conflicts
+            $freshProject = Project::with([
+                'tasks.status:id,title,color', 
+                'tasks.priority:id,title,color', 
+                'tasks.users:id,first_name,last_name,email'
+            ])->find($contract->project->id);
+            // Filter tasks by workspace
+            $tasks = $freshProject ? $freshProject->tasks->where('workspace_id', $this->workspace->id) : collect();
+        }
+        
+        // Ensure all counts are properly initialized
+        if (!isset($contract->quantities_count)) $contract->quantities_count = 0;
+        if (!isset($contract->approvals_count)) $contract->approvals_count = 0;
+        if (!isset($contract->amendments_count)) $contract->amendments_count = 0;
+        if (!isset($contract->journal_entries_count)) $contract->journal_entries_count = 0;
         
         return view('contracts.mind_map', compact('contract', 'tasks'));
     }
@@ -1163,15 +1270,78 @@ class ContractsController extends Controller
             $general_settings[$setting->variable] = $setting->value;
         }
         
-        // Render the view for PDF generation
-        $html = view('contracts.pdf_template', compact('contract', 'companyInfo', 'items', 'general_settings'))->render();
+        // Use Arabic PDF service for better Arabic support
+        $arabicPdfService = app('App\\Services\\ArabicPdfService');
         
-        // Generate PDF using DomPDF
-        $pdf = \App::make('dompdf.wrapper');
-        $pdf->loadHTML($html);
-        
-        // Return the PDF for download
-        return $pdf->download('contract_' . $contract->id . '.pdf');
+        return $arabicPdfService->generateContractPdf($contract);
+    }
+
+    /**
+     * Generate professional Arabic PDF for a contract
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generateProfessionalPdf($id)
+    {
+        try {
+            $contract = Contract::with([
+                'client', 
+                'project', 
+                'contract_type', 
+                'siteSupervisor', 
+                'quantityApprover', 
+                'accountant', 
+                'reviewer', 
+                'finalApprover',
+                'createdBy',
+                'archivedBy',
+                'quantities',
+                'approvals',
+                'amendments',
+                'journalEntries',
+                'estimates.items.unit',
+                'estimates.items.pivot'
+            ])->findOrFail($id);
+            
+            // Check if user has permission to view this contract
+            if (!isAdminOrHasAllDataAccess() && !$this->user->contracts()->where('id', $id)->exists()) {
+                return response()->json(['error' => true, 'message' => 'Unauthorized access to contract.'], 403);
+            }
+            
+            // Prepare data for the professional Arabic contract template
+            $data = [
+                'contract' => $contract,
+                'companyInfo' => [
+                    'name_ar' => get_label('company_title_ar', 'الشركة العقارية الحديثة المحدودة'),
+                    'name_en' => get_label('company_title_en', 'Modern Al-Aqariah Company Limited'),
+                    'address' => 'الجمهورية اليمنية - عدن - جولة العمري',
+                    'phone' => '02383846',
+                    'website' => 'www.aqariah.com'
+                ],
+                'pageTitle' => 'صفحة ' . $contract->id . 'من 2',
+                'contractNumber' => $contract->id,
+                'itemDescription' => $contract->title ?? '11الجبسيات', // Default from your example
+                'contractValue' => $contract->value,
+                'estimatedValue' => $contract->estimates->sum('final_total') ?: $contract->value * 0.9,
+                'completionPercentage' => $contract->value > 0 ? round(($contract->estimates->sum('final_total') / $contract->value) * 100, 2) : 0,
+            ];
+            
+            // Use Arabic PDF service for better Arabic support
+            $arabicPdfService = app('App\\Services\\ArabicPdfService');
+            
+            return $arabicPdfService->generateArabicPdf(
+                'pdf.contracts.professional_template', 
+                $data, 
+                'contract_' . $contract->id . '_professional.pdf'
+            );
+            
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => true, 'message' => 'Contract not found.'], 404);
+        } catch (\Exception $e) {
+            \Log::error('ContractsController@generateProfessionalPdf error: ' . $e->getMessage());
+            return response()->json(['error' => true, 'message' => 'Error generating PDF: ' . $e->getMessage()], 500);
+        }
     }
 
     public function get($id)
@@ -1250,7 +1420,142 @@ class ContractsController extends Controller
             return response()->json(['error' => true, 'message' => $e->getMessage()]);
         }
     }
-
+    
+    /**
+     * Assign default workflow to a contract
+     */
+    private function assignDefaultWorkflow($contract)
+    {
+        // Get default users for each role - this could be configured in settings
+        // For now, we'll use a simple approach based on permissions
+        
+        // Find users with specific roles or permissions
+        $siteSupervisor = $this->getDefaultSiteSupervisor();
+        $quantityApprover = $this->getDefaultQuantityApprover();
+        $accountant = $this->getDefaultAccountant();
+        $reviewer = $this->getDefaultReviewer();
+        $finalApprover = $this->getDefaultFinalApprover();
+        
+        // Update contract with default workflow assignments
+        $contract->update([
+            'site_supervisor_id' => $siteSupervisor ? $siteSupervisor->id : null,
+            'quantity_approver_id' => $quantityApprover ? $quantityApprover->id : null,
+            'accountant_id' => $accountant ? $accountant->id : null,
+            'reviewer_id' => $reviewer ? $reviewer->id : null,
+            'final_approver_id' => $finalApprover ? $finalApprover->id : null,
+            'workflow_status' => 'draft', // Start with draft status
+        ]);
+        
+        // Create initial approval records for each stage
+        $this->createInitialApprovals($contract);
+    }
+    
+    /**
+     * Get default site supervisor
+     */
+    private function getDefaultSiteSupervisor()
+    {
+        // This could be based on settings, role, or other criteria
+        return $this->workspace->users()
+            ->whereHas('roles.permissions', function($query) {
+                $query->where('name', 'manage_contract_quantities');
+            })
+            ->first();
+    }
+    
+    /**
+     * Get default quantity approver
+     */
+    private function getDefaultQuantityApprover()
+    {
+        return $this->workspace->users()
+            ->whereHas('roles.permissions', function($query) {
+                $query->where('name', 'manage_contract_approvals');
+            })
+            ->first();
+    }
+    
+    /**
+     * Get default accountant
+     */
+    private function getDefaultAccountant()
+    {
+        return $this->workspace->users()
+            ->whereHas('roles.permissions', function($query) {
+                $query->where('name', 'manage_journal_entries');
+            })
+            ->first();
+    }
+    
+    /**
+     * Get default reviewer
+     */
+    private function getDefaultReviewer()
+    {
+        return $this->workspace->users()
+            ->whereHas('roles.permissions', function($query) {
+                $query->where('name', 'view_contracts');
+            })
+            ->first();
+    }
+    
+    /**
+     * Get default final approver
+     */
+    private function getDefaultFinalApprover()
+    {
+        return $this->workspace->users()
+            ->where(function($query) {
+                $query->whereHas('roles.permissions', function($q) {
+                    $q->where('name', 'edit_contracts');
+                })
+                ->orWhereHas('roles.permissions', function($q) {
+                    $q->where('name', 'admin');
+                });
+            })
+            ->first();
+    }
+    
+    /**
+     * Create initial approval records
+     */
+    private function createInitialApprovals($contract)
+    {
+        $approvals = [
+            [
+                'approval_stage' => 'quantity_approval',
+                'approver_id' => $contract->quantity_approver_id,
+                'status' => 'pending',
+            ],
+            [
+                'approval_stage' => 'management_review',
+                'approver_id' => $contract->reviewer_id,
+                'status' => 'pending',
+            ],
+            [
+                'approval_stage' => 'accounting_review',
+                'approver_id' => $contract->accountant_id,
+                'status' => 'pending',
+            ],
+            [
+                'approval_stage' => 'final_approval',
+                'approver_id' => $contract->final_approver_id,
+                'status' => 'pending',
+            ]
+        ];
+        
+        foreach ($approvals as $approval) {
+            if ($approval['approver_id']) {
+                ContractApproval::create([
+                    'contract_id' => $contract->id,
+                    'approval_stage' => $approval['approval_stage'],
+                    'approver_id' => $approval['approver_id'],
+                    'status' => $approval['status'],
+                ]);
+            }
+        }
+    }
+    
     /**
      * Unarchive a contract
      */
@@ -2264,4 +2569,243 @@ class ContractsController extends Controller
             return response()->json(['error' => false, 'message' => 'Contract type(s) deleted successfully.', 'id' => $deletedContractTypes, 'titles' => $deletedContractTypeTitles, 'type' => 'contract_type']);
         }
     }
+
+    /**
+     * Get client's contract quantities for import
+     */
+    public function getClientQuantities($clientId)
+    {
+        try {
+            // Verify the client belongs to the current workspace
+            $client = Client::where('workspace_id', $this->workspace->id)->findOrFail($clientId);
+            
+            // Get all contract quantities associated with contracts of this client
+            $quantities = ContractQuantity::whereHas('contract', function($query) use ($clientId) {
+                $query->where('client_id', $clientId);
+            })
+            ->with(['contract', 'item'])
+            ->select('contract_quantities.*')
+            ->get()
+            ->map(function($quantity) {
+                return [
+                    'id' => $quantity->id,
+                    'contract_id' => $quantity->contract_id,
+                    'contract_title' => $quantity->contract->title ?? 'Unknown Contract',
+                    'item_id' => $quantity->item_id,
+                    'item_description' => $quantity->item_description,
+                    'description' => $quantity->description,
+                    'requested_quantity' => $quantity->requested_quantity,
+                    'unit' => $quantity->unit,
+                    'unit_price' => $quantity->unit_price,
+                    'total_amount' => $quantity->total_amount,
+                    'status' => $quantity->status,
+                    'created_at' => $quantity->created_at
+                ];
+            });
+            
+            // Also get items from the items table for this client's profession
+            $items = Item::where('workspace_id', $this->workspace->id)
+                     ->when($client->profession_id, function($query) use ($client) {
+                         $query->where('profession_id', $client->profession_id);
+                     })
+                     ->with(['unit', 'profession'])
+                     ->get()
+                     ->map(function($item) {
+                         return [
+                             'id' => $item->id,
+                             'title' => $item->title,
+                             'description' => $item->description,
+                             'unit' => $item->unit->title ?? 'N/A',
+                             'unit_id' => $item->unit_id,
+                             'price' => $item->effective_price,
+                             'profession_id' => $item->profession_id
+                         ];
+                     });
+            
+            return response()->json([
+                'error' => false,
+                'quantities' => $quantities,
+                'items' => $items
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Could not fetch client quantities: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get client details including uploaded quantities and related projects
+     */
+    public function getClientDetails($id)
+    {
+        try {
+            // Verify the client belongs to the current workspace
+            $client = Client::where('workspace_id', $this->workspace->id)->findOrFail($id);
+            
+            // Get all contract quantities associated with contracts of this client
+            $quantities = ContractQuantity::whereHas('contract', function($query) use ($id) {
+                $query->where('client_id', $id);
+            })
+            ->with(['contract', 'item'])
+            ->select('contract_quantities.*')
+            ->get();
+            
+            // Get related projects for this client
+            $projects = Project::whereHas('clients', function($query) use ($id) {
+                $query->where('clients.id', $id);
+            })
+            ->where('workspace_id', $this->workspace->id)
+            ->where(function($query) {
+                $query->where('status', '!=', 'archived')
+                      ->orWhereNull('status');
+            })
+            ->get()
+            ->map(function($project) {
+                return [
+                    'id' => $project->id,
+                    'title' => $project->title,
+                    'status' => $project->status,
+                    'status_class' => $this->getStatusClass($project->status),
+                    'start_date' => $project->start_date ? format_date($project->start_date) : 'N/A',
+                    'end_date' => $project->end_date ? format_date($project->end_date) : 'N/A',
+                ];
+            });
+            
+            return response()->json([
+                'error' => false,
+                'client' => [
+                    'id' => $client->id,
+                    'name' => $client->first_name . ' ' . $client->last_name,
+                    'email' => $client->email,
+                    'phone' => $client->phone,
+                    'company' => $client->company,
+                    'profession' => $client->profession ? $client->profession->name : null,
+                ],
+                'quantities' => [
+                    'total_count' => $quantities->count(),
+                    'active_count' => $quantities->count(), // All quantities are considered active for now
+                    'latest' => $quantities->sortByDesc('created_at')->first() ? 
+                               format_date($quantities->sortByDesc('created_at')->first()->created_at) : null,
+                ],
+                'projects' => $projects
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Client not found.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Could not fetch client details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Get projects for a specific client
+     */
+    public function getClientProjects($id)
+    {
+        try {
+            // Verify the client belongs to the current workspace
+            $client = Client::where('workspace_id', $this->workspace->id)->findOrFail($id);
+            
+            // Get related projects for this client
+            $projects = Project::whereHas('clients', function($query) use ($id) {
+                $query->where('clients.id', $id);
+            })
+            ->where('workspace_id', $this->workspace->id)
+            ->where(function($query) {
+                $query->where('status', '!=', 'archived')
+                      ->orWhereNull('status');
+            })
+            ->get()
+            ->map(function($project) {
+                return [
+                    'id' => $project->id,
+                    'title' => $project->title,
+                    'status' => $project->status,
+                    'status_class' => $this->getStatusClass($project->status),
+                    'start_date' => $project->start_date ? format_date($project->start_date) : 'N/A',
+                    'end_date' => $project->end_date ? format_date($project->end_date) : 'N/A',
+                ];
+            });
+            
+            return response()->json([
+                'error' => false,
+                'projects' => $projects
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Client not found.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Could not fetch client projects: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Check if client has quantities for a specific project
+     */
+    public function checkClientProjectQuantities($clientId, $projectId)
+    {
+        try {
+            // Verify the client belongs to the current workspace
+            $client = Client::where('workspace_id', $this->workspace->id)->findOrFail($clientId);
+            
+            // Verify the project belongs to the current workspace
+            $project = Project::where('workspace_id', $this->workspace->id)->findOrFail($projectId);
+            
+            // Count contract quantities for this client and project
+            $quantityCount = ContractQuantity::whereHas('contract', function($query) use ($clientId, $projectId) {
+                $query->where('client_id', $clientId)
+                      ->where('project_id', $projectId);
+            })
+            ->count();
+            
+            return response()->json([
+                'has_quantities' => $quantityCount > 0,
+                'quantity_count' => $quantityCount
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'has_quantities' => false,
+                'quantity_count' => 0
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'has_quantities' => false,
+                'quantity_count' => 0
+            ], 500);
+        }
+    }
+    
+    /**
+     * Helper method to get status class for display
+     */
+    private function getStatusClass($status)
+    {
+        $status = strtolower($status);
+        switch ($status) {
+            case 'active':
+            case 'completed':
+                return 'success';
+            case 'pending':
+            case 'on hold':
+                return 'warning';
+            case 'cancelled':
+            case 'archived':
+                return 'danger';
+            default:
+                return 'secondary';
+        }
+    }
 }
+

@@ -27,13 +27,17 @@ $visibleColumns = getUserPreferences('contracts');
             <p class="text-muted mb-0"><?= get_label('manage_all_contracts', 'Manage all your contracts efficiently') ?></p>
         </div>
         <div class="d-flex gap-2">
-            <a href="javascript:void(0);" data-bs-toggle="modal" data-bs-target="#create_contract_modal" class="btn btn-primary">
+            <a href="{{ url('/contracts/create') }}" class="btn btn-primary">
                 <i class="bx bx-plus me-1"></i>
                 <?= get_label('create_contract', 'Create Contract') ?>
             </a>
             <a href="{{url('contracts/contract-types')}}" class="btn btn-outline-primary">
                 <i class="bx bx-list-ul me-1"></i>
                 <?= get_label('contract_types', 'Contract Types') ?>
+            </a>
+            <a href="{{ route('contract-quantities.create') }}" class="btn btn-outline-success">
+                <i class="bx bx-calculator me-1"></i>
+                <?= get_label('create_extract', 'Create Extract') ?>
             </a>
             <button type="button" class="btn btn-outline-secondary" id="refresh-contracts-data">
                 <i class="bx bx-refresh"></i>
@@ -305,6 +309,9 @@ $visibleColumns = getUserPreferences('contracts');
                             <th data-field="value" data-visible="{{ (in_array('value', $visibleColumns) || empty($visibleColumns)) ? 'true' : 'false' }}" data-sortable="true" data-width="120">
                                 <?= get_label('value', 'Value') ?>
                             </th>
+                            <th data-field="progress_percentage" data-visible="{{ (in_array('progress_percentage', $visibleColumns) || empty($visibleColumns)) ? 'true' : 'false' }}" data-sortable="true" data-width="120">
+                                <?= get_label('progress_percentage', 'Progress %') ?>
+                            </th>
                             <th data-field="promisor_sign" data-visible="{{ (in_array('promisor_sign', $visibleColumns)) ? 'true' : 'false' }}" data-sortable="true" data-width="120">
                                 <?= get_label('promisor_sign_status', 'Promisor sign status') ?>
                             </th>
@@ -335,6 +342,66 @@ $visibleColumns = getUserPreferences('contracts');
     <x-empty-state-card :type="$type" />
     @endif
 </div>
+<!-- Enhanced CSS for Action Icons -->
+<style>
+.action-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0 2px;
+}
+
+.action-buttons .btn i {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.action-buttons .btn:hover {
+    transform: scale(1.1);
+    transition: all 0.2s ease-in-out;
+}
+
+.action-buttons .btn-info {
+    background-color: #03c3ec;
+    border-color: #03c3ec;
+}
+
+.action-buttons .btn-warning {
+    background-color: #ffab00;
+    border-color: #ffab00;
+}
+
+.action-buttons .btn-secondary {
+    background-color: #8592a3;
+    border-color: #8592a3;
+}
+
+.action-buttons .btn-dark {
+    background-color: #233446;
+    border-color: #233446;
+}
+
+.action-buttons .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.action-buttons .btn-danger {
+    background-color: #ff3e1d;
+    border-color: #ff3e1d;
+}
+
+/* Ensure BoxIcons are loaded */
+@font-face {
+    font-family: 'boxicons';
+    font-weight: normal;
+    font-style: normal;
+}
+</style>
+
 <!-- Enhanced JavaScript -->
 <script>
     // Global variables
@@ -384,20 +451,74 @@ $visibleColumns = getUserPreferences('contracts');
             $('#contracts_table').on('column-switch.bs.table', () => {
                 this.saveColumnVisibility();
             });
+            
+            // Handle action button clicks
+            $(document).on('click', '.edit-contract', function(e) {
+                e.preventDefault();
+                const contractId = $(this).data('id');
+                // Handle edit contract logic
+                console.log('Edit contract:', contractId);
+            });
+            
+            $(document).on('click', '.duplicate', function(e) {
+                e.preventDefault();
+                const contractId = $(this).data('id');
+                const contractTitle = $(this).data('title');
+                // Handle duplicate contract logic
+                console.log('Duplicate contract:', contractId, contractTitle);
+            });
+            
+            $(document).on('click', '.archive-contract', function(e) {
+                e.preventDefault();
+                const contractId = $(this).data('id');
+                // Handle archive contract logic
+                console.log('Archive contract:', contractId);
+            });
+            
+            $(document).on('click', '.unarchive-contract', function(e) {
+                e.preventDefault();
+                const contractId = $(this).data('id');
+                // Handle unarchive contract logic
+                console.log('Unarchive contract:', contractId);
+            });
+            
+            $(document).on('click', '.delete', function(e) {
+                e.preventDefault();
+                const contractId = $(this).data('id');
+                // Handle delete contract logic
+                console.log('Delete contract:', contractId);
+            });
         },
         
         // Load statistics data
         loadStats: function() {
-            // Get stats from the table data or set default values
-            const tableData = $('#contracts_table').bootstrapTable('getData');
-            if (tableData && tableData.length > 0) {
-                $('#total-contracts').text(tableData.length);
-                $('#total-value').text(new Intl.NumberFormat().format(tableData.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0)));
-                // For signed and pending stats, we would need actual data from the API
-                $('#signed-contracts').text('0');
-                $('#pending-contracts').text('0');
-            } else {
-                // Default values if no data
+            try {
+                // Check if bootstrap table exists and is initialized
+                if (typeof $('#contracts_table').bootstrapTable === 'function') {
+                    const tableData = $('#contracts_table').bootstrapTable('getData');
+                    if (tableData && Array.isArray(tableData) && tableData.length > 0) {
+                        $('#total-contracts').text(tableData.length);
+                        $('#total-value').text(new Intl.NumberFormat().format(tableData.reduce((sum, item) => sum + (parseFloat(item.value) || 0), 0)));
+                        // For signed and pending stats, we would need actual data from the API
+                        $('#signed-contracts').text('0');
+                        $('#pending-contracts').text('0');
+                    } else {
+                        // Default values if no data
+                        $('#total-contracts').text('0');
+                        $('#signed-contracts').text('0');
+                        $('#pending-contracts').text('0');
+                        $('#total-value').text('0');
+                    }
+                } else {
+                    // Bootstrap table not initialized, set default values
+                    $('#total-contracts').text('0');
+                    $('#signed-contracts').text('0');
+                    $('#pending-contracts').text('0');
+                    $('#total-value').text('0');
+                }
+            } catch (error) {
+                console.error('Error loading contract stats:', error);
+                // Set default values on error
                 $('#total-contracts').text('0');
                 $('#signed-contracts').text('0');
                 $('#pending-contracts').text('0');
@@ -416,16 +537,35 @@ $visibleColumns = getUserPreferences('contracts');
                 onLoadSuccess: (data) => {
                     this.updateTableInfo(data);
                     this.initializeTooltips();
+                    this.initializeActionButtons();
                 },
                 onLoadError: (status, res) => {
                     toastr.error('{{ get_label('error_loading_data', 'Error loading data') }}');
                 },
                 onPageChange: () => {
                     this.updateTableInfo();
+                    this.initializeTooltips();
+                    this.initializeActionButtons();
                 },
                 onSort: () => {
                     this.updateTableInfo();
+                    this.initializeTooltips();
+                    this.initializeActionButtons();
                 }
+            });
+        },
+        
+        // Initialize action buttons
+        initializeActionButtons: function() {
+            // Ensure action buttons have proper styling
+            $('.action-buttons .btn').each(function() {
+                $(this).addClass('d-flex align-items-center justify-content-center');
+            });
+            
+            // Re-initialize tooltips for dynamically loaded content
+            $('.action-buttons .btn').tooltip({
+                trigger: 'hover',
+                placement: 'top'
             });
         },
         
@@ -599,6 +739,12 @@ $visibleColumns = getUserPreferences('contracts');
             $('[data-bs-toggle="tooltip"]').tooltip({
                 trigger: 'hover'
             });
+            
+            // Initialize tooltips for action buttons
+            $('.action-buttons .btn').tooltip({
+                trigger: 'hover',
+                placement: 'top'
+            });
         },
         
         // Get query parameters for AJAX requests
@@ -633,6 +779,764 @@ $visibleColumns = getUserPreferences('contracts');
     // Make ContractsManager globally available for other scripts
     window.ContractsManager = ContractsManager;
 </script>
+<!-- Professional Contract Creation Modal -->
+<div class="modal fade" id="create_contract_modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bx bx-file me-2"></i>
+                    <?= get_label('create_new_contract', 'Create New Contract') ?>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="create_contract_form" action="{{ url('/contracts/store') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Contract Information Section -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card border-primary-subtle">
+                                <div class="card-header bg-light-subtle">
+                                    <h6 class="card-title text-primary mb-0">
+                                        <i class="bx bx-info-circle me-2"></i>
+                                        <?= get_label('contract_information', 'Contract Information') ?>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_title" class="form-label fw-medium">
+                                                <?= get_label('title', 'Title') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="text" class="form-control" id="modal_title" name="title" required 
+                                                   placeholder="<?= get_label('enter_contract_title', 'Enter contract title') ?>">
+                                            <div class="invalid-feedback" id="title_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_value" class="form-label fw-medium">
+                                                <?= get_label('contract_value', 'Contract Value') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-light">
+                                                    <?= $general_settings['currency_symbol'] ?? '$' ?>
+                                                </span>
+                                                <input type="text" class="form-control" id="modal_value" name="value" required placeholder="0.00">
+                                            </div>
+                                            <div class="invalid-feedback" id="value_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_start_date" class="form-label fw-medium">
+                                                <?= get_label('start_date', 'Start Date') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="modal_start_date" name="start_date" required>
+                                            <div class="invalid-feedback" id="start_date_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_end_date" class="form-label fw-medium">
+                                                <?= get_label('end_date', 'End Date') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="modal_end_date" name="end_date" required>
+                                            <div class="invalid-feedback" id="end_date_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-12 mb-3">
+                                            <label for="modal_description" class="form-label fw-medium">
+                                                <?= get_label('description', 'Description') ?>
+                                            </label>
+                                            <textarea class="form-control" id="modal_description" name="description" rows="5" 
+                                                      placeholder="<?= get_label('enter_contract_description', 'Enter contract description') ?>"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Client and Project Section -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card border-primary-subtle">
+                                <div class="card-header bg-light-subtle">
+                                    <h6 class="card-title text-primary mb-0">
+                                        <i class="bx bx-user me-2"></i>
+                                        <?= get_label('client_project_info', 'Client & Project Information') ?>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_client_id" class="form-label fw-medium">
+                                                <?= get_label('client', 'Client') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <select class="form-select" id="modal_client_id" name="client_id" required 
+                                                        data-placeholder="<?= get_label('select_client', 'Select Client') ?>">
+                                                    <option value=""><?= get_label('select_client', 'Select Client') ?></option>
+                                                </select>
+                                                <button class="btn btn-outline-primary" type="button" 
+                                                        onclick="window.open('{{ url('/clients/create') }}', '_blank')" 
+                                                        title="<?= get_label('create_new_client', 'Create New Client') ?>">
+                                                    <i class="bx bx-user-plus"></i>
+                                                </button>
+                                            </div>
+                                            <div class="invalid-feedback" id="client_id_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_project_id" class="form-label fw-medium">
+                                                <?= get_label('project', 'Project') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="input-group">
+                                                <select class="form-select" id="modal_project_id" name="project_id" required 
+                                                        data-placeholder="<?= get_label('select_project', 'Select Project') ?>">
+                                                    <option value=""><?= get_label('select_project', 'Select Project') ?></option>
+                                                </select>
+                                                <button class="btn btn-outline-primary" type="button" id="create_project_modal_btn" 
+                                                        data-bs-toggle="modal" data-bs-target="#create_project_modal" 
+                                                        title="<?= get_label('create_new_project', 'Create New Project') ?>">
+                                                    <i class="bx bx-plus"></i>
+                                                </button>
+                                            </div>
+                                            <div class="invalid-feedback" id="project_id_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_contract_type_id" class="form-label fw-medium">
+                                                <?= get_label('contract_type', 'Contract Type') ?> <span class="text-danger">*</span>
+                                            </label>
+                                            <select class="form-select" id="modal_contract_type_id" name="contract_type_id" required>
+                                                <option value=""><?= get_label('select_contract_type', 'Select Contract Type') ?></option>
+                                            </select>
+                                            <div class="invalid-feedback" id="contract_type_id_error"></div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_profession_id" class="form-label fw-medium">
+                                                <?= get_label('profession', 'Profession') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_profession_id" name="profession_id">
+                                                <option value=""><?= get_label('select_profession', 'Select Profession') ?></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Workflow Assignment Section -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card border-primary-subtle">
+                                <div class="card-header bg-light-subtle">
+                                    <h6 class="card-title text-primary mb-0">
+                                        <i class="bx bx-sitemap me-2"></i>
+                                        <?= get_label('workflow_assignments', 'Workflow Assignments') ?>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted small mb-3">
+                                        <?= get_label('workflow_assignments_description', 'Assign users to different workflow stages for contract approval process') ?>
+                                    </p>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_site_supervisor_id" class="form-label fw-medium">
+                                                <?= get_label('site_supervisor', 'Site Supervisor') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_site_supervisor_id" name="site_supervisor_id" 
+                                                    data-placeholder="<?= get_label('select_site_supervisor', 'Select Site Supervisor') ?>">
+                                                <option value=""><?= get_label('select_site_supervisor', 'Select Site Supervisor') ?></option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_quantity_approver_id" class="form-label fw-medium">
+                                                <?= get_label('quantity_approver', 'Quantity Approver') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_quantity_approver_id" name="quantity_approver_id" 
+                                                    data-placeholder="<?= get_label('select_quantity_approver', 'Select Quantity Approver') ?>">
+                                                <option value=""><?= get_label('select_quantity_approver', 'Select Quantity Approver') ?></option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_accountant_id" class="form-label fw-medium">
+                                                <?= get_label('accountant', 'Accountant') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_accountant_id" name="accountant_id" 
+                                                    data-placeholder="<?= get_label('select_accountant', 'Select Accountant') ?>">
+                                                <option value=""><?= get_label('select_accountant', 'Select Accountant') ?></option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_reviewer_id" class="form-label fw-medium">
+                                                <?= get_label('reviewer', 'Reviewer') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_reviewer_id" name="reviewer_id" 
+                                                    data-placeholder="<?= get_label('select_reviewer', 'Select Reviewer') ?>">
+                                                <option value=""><?= get_label('select_reviewer', 'Select Reviewer') ?></option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="modal_final_approver_id" class="form-label fw-medium">
+                                                <?= get_label('final_approver', 'Final Approver') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_final_approver_id" name="final_approver_id" 
+                                                    data-placeholder="<?= get_label('select_final_approver', 'Select Final Approver') ?>">
+                                                <option value=""><?= get_label('select_final_approver', 'Select Final Approver') ?></option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Settings -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card border-primary-subtle">
+                                <div class="card-header bg-light-subtle">
+                                    <h6 class="card-title text-primary mb-0">
+                                        <i class="bx bx-cog me-2"></i>
+                                        <?= get_label('additional_settings', 'Additional Settings') ?>
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <label for="modal_extracts" class="form-label fw-medium">
+                                                <?= get_label('link_existing_extracts', 'Link Existing Extracts') ?>
+                                            </label>
+                                            <select class="form-select" id="modal_extracts" name="extracts[]" multiple 
+                                                    data-placeholder="<?= get_label('select_extracts_to_link', 'Select extracts to link to this contract') ?>">
+                                            </select>
+                                            <div class="form-text">
+                                                <?= get_label('extracts_link_help', 'Select existing extracts that should be linked to this contract. You can also create new extracts after contract creation.') ?>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="modal_auto_create_project" name="auto_create_project" value="1">
+                                                <label class="form-check-label fw-medium" for="modal_auto_create_project">
+                                                    <?= get_label('auto_create_project', 'Auto-create Project') ?>
+                                                </label>
+                                                <div class="form-text">
+                                                    <?= get_label('auto_create_project_help', 'Automatically create a project with contract details') ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="modal_auto_start_workflow" name="auto_start_workflow" value="1">
+                                                <label class="form-check-label fw-medium" for="modal_auto_start_workflow">
+                                                    <?= get_label('auto_start_workflow', 'Auto-start Workflow') ?>
+                                                </label>
+                                                <div class="form-text">
+                                                    <?= get_label('auto_start_workflow_help', 'Automatically start the workflow process after contract creation') ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="modal_require_signatures" name="require_signatures" value="1" checked>
+                                                <label class="form-check-label fw-medium" for="modal_require_signatures">
+                                                    <?= get_label('require_signatures', 'Require Signatures') ?>
+                                                </label>
+                                                <div class="form-text">
+                                                    <?= get_label('require_signatures_help', 'Require both parties to sign the contract') ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i>
+                        <?= get_label('cancel', 'Cancel') ?>
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="modal_submit_btn">
+                        <i class="bx bx-save me-1"></i>
+                        <?= get_label('create_contract', 'Create Contract') ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Project Modal (for quick project creation) -->
+<div class="modal fade" id="create_project_modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bx bx-plus-circle me-2"></i>
+                    <?= get_label('create_new_project', 'Create New Project') ?>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="create_project_form">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="project_modal_title" class="form-label fw-medium">
+                                <?= get_label('title', 'Title') ?> <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="project_modal_title" name="title" required 
+                                   placeholder="<?= get_label('enter_project_title', 'Enter project title') ?>">
+                            <div class="invalid-feedback" id="project_title_error"></div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="project_modal_client_id" class="form-label fw-medium">
+                                <?= get_label('client', 'Client') ?> <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="project_modal_client_id" name="client_id" required>
+                                <option value=""><?= get_label('select_client', 'Select Client') ?></option>
+                            </select>
+                            <div class="invalid-feedback" id="project_client_id_error"></div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="project_modal_start_date" class="form-label fw-medium">
+                                <?= get_label('start_date', 'Start Date') ?>
+                            </label>
+                            <input type="date" class="form-control" id="project_modal_start_date" name="start_date">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="project_modal_end_date" class="form-label fw-medium">
+                                <?= get_label('end_date', 'End Date') ?>
+                            </label>
+                            <input type="date" class="form-control" id="project_modal_end_date" name="end_date">
+                        </div>
+                        
+                        <div class="col-md-12 mb-3">
+                            <label for="project_modal_description" class="form-label fw-medium">
+                                <?= get_label('description', 'Description') ?>
+                            </label>
+                            <textarea class="form-control" id="project_modal_description" name="description" rows="3" 
+                                      placeholder="<?= get_label('enter_project_description', 'Enter project description') ?>"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="bx bx-x me-1"></i>
+                        <?= get_label('cancel', 'Cancel') ?>
+                    </button>
+                    <button type="submit" class="btn btn-success" id="create_project_modal_btn_submit">
+                        <i class="bx bx-plus me-1"></i>
+                        <?= get_label('create_project', 'Create Project') ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="{{asset('assets/js/pages/contracts-enhanced.js')}}"></script>
-<script src="{{asset('assets/js/pages/contracts.js')}}"></script>
+<script>
+// Fixed contracts routes for actions
+function idFormatter(value, row, index) {
+    return [
+        '<a href="' + baseUrl + '/contracts/' + row.id + '" title="' + label_view_details + '">' + label_contract_id_prefix + row.id + '</a>'
+    ];
+}
+
+function actionsFormatter(value, row, index) {
+    console.log('actionsFormatter called for row:', row.id);
+    let actions = [];
+    
+    // Add view details button
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '" class="btn btn-sm btn-info" title="' + label_view_details + '"><i class="bx bx-show"></i></a>');
+    
+    // Add edit button if user has permission
+    if (row.can_edit) {
+        actions.push('<a href="javascript:void(0);" class="edit-contract btn btn-sm btn-warning mx-1" data-bs-toggle="modal" data-bs-target="#edit_contract_modal" data-id="' + row.id + '" title="' + label_update + '"><i class="bx bx-edit"></i></a>');
+    }
+    
+    // Add duplicate button if user has permission to create
+    if (row.can_create) {
+        actions.push('<a href="javascript:void(0);" class="duplicate btn btn-sm btn-secondary mx-1" data-id="' + row.id + '" data-title="' + row.title + '" data-type="contracts" data-table="contracts_table" title="' + label_duplicate + '"><i class="bx bx-copy"></i></a>');
+    }
+    
+    // Add archive/unarchive buttons based on workflow status
+    if (row.workflow_status === 'approved' && !row.is_archived) {
+        actions.push('<a href="javascript:void(0);" class="archive-contract btn btn-sm btn-dark mx-1" data-id="' + row.id + '" title="Archive Contract"><i class="bx bx-archive"></i></a>');
+    } else if (row.is_archived) {
+        actions.push('<a href="javascript:void(0);" class="unarchive-contract btn btn-sm btn-warning mx-1" data-id="' + row.id + '" title="Unarchive Contract"><i class="bx bx-unarchive"></i></a>');
+    }
+    
+    // Add delete button if user has permission
+    if (row.can_delete) {
+        actions.push('<button title="' + label_delete + '" type="button" class="btn btn-sm btn-danger delete mx-1" data-id="' + row.id + '" data-type="contracts" data-table="contracts_table"><i class="bx bx-trash"></i></button>');
+    }
+    
+    // Add mind map button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/mind-map" class="btn btn-sm btn-primary mx-1" title="' + label_mind_map + '"><i class="bx bx-sitemap"></i></a>');
+    
+    // Add generate PDF button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/generate-pdf" class="btn btn-sm btn-success mx-1" title="Generate PDF"><i class="bx bx-file"></i></a>');
+    
+    // Add generate contract PDF button - using proper route
+    actions.push('<a href="' + baseUrl + '/contracts/' + row.id + '/generate-pdf" class="btn btn-sm btn-info mx-1" title="Download Contract PDF"><i class="bx bx-download"></i></a>');
+    
+    // Wrap all actions in a container for better styling
+    return '<div class="action-buttons d-flex justify-content-center">' + actions.join('') + '</div>';
+}
+</script>
+<script>
+$(document).ready(function() {
+    // Initialize all select2 dropdowns
+    $('#create_contract_modal select').select2({
+        placeholder: function() {
+            return $(this).data('placeholder') || 'Select an option';
+        },
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#create_contract_modal')
+    });
+    
+    // Initialize project modal select2
+    $('#create_project_modal select').select2({
+        placeholder: function() {
+            return $(this).data('placeholder') || 'Select an option';
+        },
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#create_project_modal')
+    });
+    
+    // Load dropdown data
+    loadDropdownData();
+    
+    // Form submission handling
+    $('#create_contract_form').on('submit', function(e) {
+        e.preventDefault();
+        submitContractForm();
+    });
+    
+    // Project creation form
+    $('#create_project_form').on('submit', function(e) {
+        e.preventDefault();
+        createProject();
+    });
+    
+    // Currency formatting
+    $('#modal_value').on('input', function() {
+        var value = $(this).val().replace(/[^0-9.]/g, '');
+        if (value) {
+            var parts = value.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            $(this).val(parts.join('.'));
+        }
+    });
+    
+    // Date validation
+    $('#modal_start_date, #modal_end_date').on('change', function() {
+        validateDates();
+    });
+    
+    // Auto-select client when project is selected
+    $('#modal_project_id').on('change', function() {
+        var selectedProject = $(this).find('option:selected');
+        var clientId = selectedProject.data('client-id');
+        if (clientId) {
+            $('#modal_client_id').val(clientId).trigger('change');
+        }
+    });
+    
+    // Handle auto-create project checkbox
+    $('#modal_auto_create_project').on('change', function() {
+        var projectSelectGroup = $('#modal_project_id').closest('.input-group');
+        var projectCreateBtn = $('#create_project_modal_btn');
+        
+        if ($(this).is(':checked')) {
+            // Hide project selection and create button
+            projectSelectGroup.find('select').prop('disabled', true).val('').trigger('change');
+            projectCreateBtn.hide();
+        } else {
+            // Show project selection and create button
+            projectSelectGroup.find('select').prop('disabled', false);
+            projectCreateBtn.show();
+        }
+    });
+    
+    // Clear validation errors when modal is closed
+    $('#create_contract_modal').on('hidden.bs.modal', function() {
+        clearValidationErrors();
+        $('#create_contract_form')[0].reset();
+        $('#create_contract_form select').trigger('change');
+    });
+    
+    // Clear project modal errors when closed
+    $('#create_project_modal').on('hidden.bs.modal', function() {
+        clearProjectErrors();
+        $('#create_project_form')[0].reset();
+        $('#create_project_form select').trigger('change');
+    });
+    
+    // Functions
+    function loadDropdownData() {
+        // Load clients with better error handling
+        $.ajax({
+            url: '{{ url('/api/clients') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.data) {
+                    var clientSelect = $('#modal_client_id, #project_modal_client_id');
+                    clientSelect.empty().append('<option value="">{{ get_label('select_client', 'Select Client') }}</option>');
+                    $.each(response.data, function(index, client) {
+                        var clientText = client.first_name + ' ' + client.last_name;
+                        if (client.company) clientText += ' (' + client.company + ')';
+                        if (client.profession && client.profession.name) clientText += ' - ' + client.profession.name;
+                        clientSelect.append('<option value="' + client.id + '" data-profession="' + (client.profession_id || '') + '">' + clientText + '</option>');
+                    });
+                    clientSelect.trigger('change');
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_clients', 'Error loading clients') }}');
+            }
+        });
+        
+        // Load projects with better error handling
+        $.ajax({
+            url: '{{ url('/api/projects') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.data) {
+                    var projectSelect = $('#modal_project_id');
+                    projectSelect.empty().append('<option value="">{{ get_label('select_project', 'Select Project') }}</option>');
+                    $.each(response.data, function(index, project) {
+                        projectSelect.append('<option value="' + project.id + '" data-client-id="' + (project.client_id || '') + '">' + project.title + '</option>');
+                    });
+                    projectSelect.trigger('change');
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_projects', 'Error loading projects') }}');
+            }
+        });
+        
+        // Load contract types with better error handling
+        $.ajax({
+            url: '{{ url('/contracts/contract-types') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.data) {
+                    var typeSelect = $('#modal_contract_type_id');
+                    typeSelect.empty().append('<option value="">{{ get_label('select_contract_type', 'Select Contract Type') }}</option>');
+                    $.each(response.data, function(index, type) {
+                        typeSelect.append('<option value="' + type.id + '">' + type.type + '</option>');
+                    });
+                    typeSelect.trigger('change');
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_contract_types', 'Error loading contract types') }}');
+            }
+        });
+        
+        // Load users for workflow assignments with better error handling
+        $.ajax({
+            url: '{{ url('/api/users') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.data) {
+                    var userSelects = [
+                        '#modal_site_supervisor_id',
+                        '#modal_quantity_approver_id',
+                        '#modal_accountant_id',
+                        '#modal_reviewer_id',
+                        '#modal_final_approver_id'
+                    ];
+                    
+                    $.each(userSelects, function(index, selector) {
+                        var selectElement = $(selector);
+                        selectElement.empty().append('<option value="">{{ get_label('select_user', 'Select User') }}</option>
+                        $.each(response.data, function(userIndex, user) {
+                            var userText = user.first_name + ' ' + user.last_name;
+                            selectElement.append('<option value="' + user.id + '">' + userText + '</option>');
+                        });
+                        selectElement.trigger('change');
+                    });
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_users', 'Error loading users') }}');
+            }
+        });
+        
+        // Load extracts with better error handling
+        $.ajax({
+            url: '{{ url('/estimates-invoices/list') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.rows) {
+                    var extractSelect = $('#modal_extracts');
+                    extractSelect.empty();
+                    $.each(response.rows, function(index, extract) {
+                        var extractText = extract.name + ' (' + extract.type + ') - ' + extract.final_total;
+                        extractSelect.append('<option value="' + extract.id + '">' + extractText + '</option>');
+                    });
+                    extractSelect.trigger('change');
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_extracts', 'Error loading extracts') }}');
+            }
+        });
+        
+        // Load professions with better error handling
+        $.ajax({
+            url: '{{ url('/professions/list') }}',
+            method: 'GET',
+            data: { limit: 1000 },
+            success: function(response) {
+                if (response.rows) {
+                    var professionSelect = $('#modal_profession_id');
+                    professionSelect.empty().append('<option value="">{{ get_label('select_profession', 'Select Profession') }}</option>');
+                    $.each(response.rows, function(index, profession) {
+                        professionSelect.append('<option value="' + profession.id + '">' + profession.name + '</option>');
+                    });
+                    professionSelect.trigger('change');
+                }
+            },
+            error: function() {
+                toastr.error('{{ get_label('error_loading_professions', 'Error loading professions') }}');
+            }
+        });
+    }
+    
+    function submitContractForm() {
+        var submitBtn = $('#modal_submit_btn');
+        var originalHtml = submitBtn.html();
+        var autoCreateProject = $('#modal_auto_create_project').is(':checked');
+        var formData = $('#create_contract_form').serialize();
+        
+        // Add auto-create project flag to form data
+        if (autoCreateProject) {
+            formData += '&auto_create_project=1';
+        }
+        
+        $.ajax({
+            url: $('#create_contract_form').attr('action'),
+            method: 'POST',
+            data: formData,
+            beforeSend: function() {
+                submitBtn.html('<i class="bx bx-loader-alt bx-spin"></i> <?= get_label('creating', 'Creating') ?>...').attr('disabled', true);
+                clearValidationErrors();
+            },
+            success: function(response) {
+                if (!response.error) {
+                    toastr.success('<?= get_label('contract_created_successfully', 'Contract created successfully') ?>');
+                    
+                    // Handle auto-create project if requested
+                    if (autoCreateProject && response.project_id) {
+                        toastr.success('<?= get_label('project_created_automatically', 'Project created automatically') ?>');
+                    }
+                    
+                    $('#create_contract_modal').modal('hide');
+                    $('#contracts_table').bootstrapTable('refresh');
+                    ContractsManager.loadStats();
+                } else {
+                    toastr.error(response.message || '<?= get_label('something_went_wrong', 'Something went wrong') ?>');
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 422) {
+                    var errors = xhr.responseJSON.errors;
+                    $.each(errors, function(field, messages) {
+                        $('#' + field + '_error').text(messages[0]);
+                        $('#modal_' + field).addClass('is-invalid');
+                    });
+                    toastr.error('<?= get_label('please_fix_validation_errors', 'Please fix the validation errors') ?>');
+                } else {
+                    toastr.error('<?= get_label('something_went_wrong', 'Something went wrong') ?>');
+                }
+            },
+            complete: function() {
+                submitBtn.html(originalHtml).attr('disabled', false);
+            }
+        });
+    }
+    
+    function createProject() {
+        var submitBtn = $('#create_project_modal_btn_submit');
+        var originalHtml = submitBtn.html();
+        
+        $.ajax({
+            url: '{{ url('/projects/store') }}',
+            method: 'POST',
+            data: $('#create_project_form').serialize(),
+            beforeSend: function() {
+                submitBtn.html('<i class="bx bx-loader-alt bx-spin"></i> <?= get_label('creating', 'Creating') ?>...').attr('disabled', true);
+                clearProjectErrors();
+            },
+            success: function(response) {
+                if (!response.error) {
+                    toastr.success('<?= get_label('project_created_successfully', 'Project created successfully') ?>');
+                    $('#create_project_modal').modal('hide');
+                    
+                    // Add new project to dropdown
+                    var newOption = new Option(response.data.title, response.data.id, true, true);
+                    $('#modal_project_id').append(newOption).trigger('change');
+                } else {
+                    toastr.error(response.message || '<?= get_label('something_went_wrong', 'Something went wrong') ?>');
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 422) {
+                    var errors = xhr.responseJSON.errors;
+                    $.each(errors, function(field, messages) {
+                        $('#project_' + field + '_error').text(messages[0]);
+                        $('#project_modal_' + field).addClass('is-invalid');
+                    });
+                    toastr.error('<?= get_label('please_fix_validation_errors', 'Please fix the validation errors') ?>');
+                } else {
+                    toastr.error('<?= get_label('something_went_wrong', 'Something went wrong') ?>');
+                }
+            },
+            complete: function() {
+                submitBtn.html(originalHtml).attr('disabled', false);
+            }
+        });
+    }
+    
+    function validateDates() {
+        var startDate = new Date($('#modal_start_date').val());
+        var endDate = new Date($('#modal_end_date').val());
+        
+        if (startDate && endDate && startDate > endDate) {
+            toastr.error('<?= get_label('end_date_must_be_after_start_date', 'End date must be after start date') ?>');
+            $('#modal_end_date').val('');
+        }
+    }
+    
+    function clearValidationErrors() {
+        $('.is-invalid').removeClass('is-invalid');
+        $('.invalid-feedback').text('');
+    }
+    
+    function clearProjectErrors() {
+        $('#create_project_modal .is-invalid').removeClass('is-invalid');
+        $('#create_project_modal .invalid-feedback').text('');
+    }
+});
+</script>
 @endsection

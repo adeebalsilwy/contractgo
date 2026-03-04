@@ -123,6 +123,13 @@
                         <input class="form-control" type="text" id="zip" name="zip" placeholder="<?= get_label('please_enter_zip_code', 'Please enter ZIP code') ?>" value="{{ old('zip') }}">
                     </div>
                     <div class="mb-3 col-md-6">
+                        <label for="profession" class="form-label"><?= get_label('profession', 'Profession') ?></label>
+                        <select class="form-select professions_select" id="profession_id" name="profession_id" data-placeholder="<?= get_label('select_profession', 'Select profession') ?>">
+                            <option value=""><?= get_label('please_select', 'Please select') ?></option>
+                        </select>
+                        <div class="form-text"><?= get_label('profession_selection_help', 'Select the client\'s profession or area of expertise') ?></div>
+                    </div>
+                    <div class="mb-3 col-md-6">
                         <label for="profile" class="form-label"><?= get_label('profile_picture', 'Profile picture') ?></label>
                         <input class="form-control" type="file" id="profile" name="profile">                        
                     </div>

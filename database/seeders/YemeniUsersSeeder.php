@@ -127,23 +127,25 @@ class YemeniUsersSeeder extends Seeder
             ],
         ];
 
-        // Check if any workspace exists, if not, create one first
-        $workspaceCount = \App\Models\Workspace::count();
-        if ($workspaceCount === 0) {
-            // Create a default workspace
-            $defaultWorkspace = \App\Models\Workspace::create([
-                'user_id' => '1', // Using default user_id
-                'title' => 'ال workspace الافتراضي',
-            ]);
-        } else {
-            $defaultWorkspace = \App\Models\Workspace::first();
+        // Use workspace ID 1 (Modern Real Estate Company) - don't create new workspaces
+        $defaultWorkspace = \App\Models\Workspace::find(1);
+        if (!$defaultWorkspace) {
+            $this->command->error('Workspace ID 1 not found! Please run ModernRealEstateCompanySeeder first.');
+            return;
         }
 
-        foreach ($users as $userData) {
+        foreach ($users as $index => $userData) {
             // Check if user already exists
             if (!User::where('email', $userData['email'])->exists()) {
                 // Set default workspace ID after ensuring workspace exists
                 $userData['default_workspace_id'] = $defaultWorkspace->id;
+                
+                // Only assign profession_id if professions exist
+                $professionsCount = \App\Models\Profession::count();
+                if ($professionsCount > 0) {
+                    $userData['profession_id'] = (($index % $professionsCount) + 1);
+                }
+                
                 User::create($userData);
                 $this->command->info('Created user: ' . $userData['first_name'] . ' ' . $userData['last_name']);
             } else {

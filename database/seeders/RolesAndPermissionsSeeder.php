@@ -50,6 +50,13 @@ class RolesAndPermissionsSeeder extends Seeder
             'edit contracts',
             'delete contracts',
             
+            // Contract obligations permissions
+            'manage_contract_obligations',
+            'view_contract_obligations',
+            'create_contract_obligations',
+            'edit_contract_obligations',
+            'delete_contract_obligations',
+            
             // Other permissions as needed
             'view dashboard',
             'manage settings',

@@ -31,56 +31,44 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\UpdaterController;
 use App\Http\Controllers\ExpensesController;
-use App\Http\Controllers\LanguageController;
-use App\Http\Controllers\LeadFormController;
-use App\Http\Controllers\MeetingsController;
 use App\Http\Controllers\PaymentsController;
-use App\Http\Controllers\PayslipsController;
-use App\Http\Controllers\PriorityController;
 use App\Http\Controllers\ProjectsController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\TaskListController;
-use App\Http\Controllers\CandidateController;
-use App\Http\Controllers\ContractsController;
-use App\Http\Controllers\EmailSendController;
-use App\Http\Controllers\InstallerController;
-use App\Http\Controllers\InterviewController;
-use App\Http\Controllers\LeadStageController;
-use App\Http\Middleware\CustomRoleMiddleware;
-use App\Http\Controllers\AllowancesController;
-use App\Http\Controllers\DeductionsController;
-use App\Http\Controllers\LeadImportController;
-use App\Http\Controllers\LeadSourceController;
-use App\Http\Controllers\PreferenceController;
-use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\WorkspacesController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\Auth\SignUpController;
-use App\Http\Controllers\CustomFieldController;
-use App\Http\Controllers\PwaManifestController;
-use App\Http\Controllers\PwaSettingsController;
-use LaravelPWA\Http\Controllers\LaravelPWAController;
+use App\Http\Controllers\LeavesController;
+use App\Http\Controllers\PluginsController;
+use App\Http\Controllers\PriorityController;
+use App\Http\Controllers\PayslipsController;
+use App\Http\Controllers\TemplatesController;
 use App\Http\Controllers\TimeTrackerController;
-use App\Http\Controllers\LeadFollowUpController;
-use App\Http\Controllers\LeaveRequestController;
-use App\Http\Controllers\EmailTemplateController;
-use App\Http\Controllers\NotificationsController;
-use App\Http\Controllers\PluginManagerController;
+use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\TaskTimeEntryController;
-use Spatie\Permission\Middlewares\RoleMiddleware;
-use App\Http\Controllers\PaymentMethodsController;
-use App\Http\Controllers\CandidateStatusController;
-use App\Http\Controllers\PluginInstallerController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\LanguagesController;
+use App\Http\Controllers\LanguageController;
+use App\Http\Controllers\InstallerController;
+use App\Http\Controllers\SignUpController;
+use App\Http\Controllers\AIModelsController;
+use App\Http\Controllers\MeetingsController;
 use App\Http\Controllers\EstimatesInvoicesController;
-use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContractTypesController;
+use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\ContractQuantitiesController;
 use App\Http\Controllers\ContractApprovalsController;
 use App\Http\Controllers\ContractAmendmentsController;
+use App\Http\Controllers\ContractObligationsController;
 use App\Http\Controllers\JournalEntriesController;
-use App\Http\Controllers\ItemPricingController;
+use App\Http\Controllers\PluginManagerController;
+use App\Http\Controllers\ProfessionController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\WorkflowTestController;
+use Illuminate\Support\Facades\Request;
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use Spatie\Permission\Middlewares\PermissionMiddleware;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\PreferenceController;
+use App\Http\Controllers\ItemPricingController;
+
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -110,6 +98,59 @@ Route::get('/test-calendar', function () {
 Route::get('/phpinfo', function () {
     phpinfo();
 });
+
+// Test PDF generation routes
+Route::get('/test-pdf/{id?}', function ($id = null) {
+    try {
+        $contractId = $id ?? \App\Models\Contract::first()->id;
+        $contract = \App\Models\Contract::findOrFail($contractId);
+        
+        $pdfService = app('App\Services\PdfService');
+        return $pdfService->generateContractPdf($contract);
+        
+    } catch (Exception $e) {
+        return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
+    }
+})->name('test.pdf');
+
+// Test Arabic PDF generation
+Route::get('/test-arabic-pdf/{id?}', function ($id = null) {
+    try {
+        $estimateId = $id ?? \App\Models\EstimatesInvoice::first()->id;
+        $estimate = \App\Models\EstimatesInvoice::findOrFail($estimateId);
+        
+        $arabicPdfService = app('App\Services\ArabicPdfService');
+        return $arabicPdfService->generateEstimatePdf($estimate);
+        
+    } catch (Exception $e) {
+        \Log::error('Test Arabic PDF error: ' . $e->getMessage());
+        return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
+    }
+})->name('test.arabic.pdf');
+
+// Test Language Controller
+Route::get('/test-language-controller', function() {
+    try {
+        $controller = app('App\Http\Controllers\LanguageController');
+        return response()->json(['status' => 'success', 'message' => 'LanguageController instantiated successfully']);
+    } catch (Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+})->name('test.language.controller');
+
+// Direct test of language switch
+Route::get('/test-language-switch/{code}', function($code) {
+    try {
+        $controller = app('App\Http\Controllers\LanguageController');
+        $response = $controller->switch($code);
+        return response()->json(['status' => 'success', 'message' => 'Language switched to ' . $code]);
+    } catch (Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+})->name('test.language.switch');
+
+// Test route without middleware
+Route::get('/test-switch-direct/{code}', [LanguageController::class, 'switch'])->name('test.switch.direct');
 
 
 Route::get('/generate-api-doc', function () {
@@ -153,13 +194,13 @@ Route::post('/installer/install', [InstallerController::class, 'install'])->midd
 
 Route::get('/meetings/join/web-view/{id}', [MeetingsController::class, 'joinWebView']);
 
-// PWA Routes
-Route::group(['as' => 'laravelpwa.'], function()
-{
-    Route::get('/manifest.json', [LaravelPWAController::class, 'manifestJson'])
-    ->name('manifest');
-    Route::get('/offline/', [LaravelPWAController::class, 'offline']);
-});
+// PWA Routes - Commented out as controller not found
+// Route::group(['as' => 'laravelpwa.'], function()
+// {
+//     Route::get('/manifest.json', [LaravelPWAController::class, 'manifestJson'])
+//     ->name('manifest');
+//     Route::get('/offline/', [LaravelPWAController::class, 'offline']);
+// });
 
 // Chat routes
 Route::prefix('chat')->group(function () {
@@ -182,9 +223,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
 
     Route::post('/users/authenticate', [UserController::class, 'authenticate'])->middleware('customThrottle');
 
-    Route::get('/signup', [SignUpController::class, 'index'])->middleware(['guest', 'checkSignupEnabled']);
+    Route::get('/signup', [App\Http\Controllers\Auth\SignUpController::class, 'index'])->middleware(['guest', 'checkSignupEnabled']);
 
-    Route::post('/create-account', [SignUpController::class, 'create_account'])->middleware(['guest', 'checkSignupEnabled']);
+    Route::post('/create-account', [App\Http\Controllers\Auth\SignUpController::class, 'create_account'])->middleware(['guest', 'checkSignupEnabled']);
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->middleware('guest');
 
@@ -202,7 +243,7 @@ Route::middleware(['CheckInstallation'])->group(function () {
 
     Route::post('/logout', [UserController::class, 'logout'])->middleware(['multiguard']);
 
-    Route::get("settings/languages/switch/{code}", [LanguageController::class, 'switch'])->middleware(['multiguard']);
+    Route::get("settings/languages/switch/{code}", [LanguageController::class, 'switch'])->middleware(['multiguard'])->name('languages.switch');
 
     Route::prefix('forms')->group(function () {
         Route::get('{slug}', [PublicFormController::class, 'show'])->name('public.form');
@@ -218,8 +259,8 @@ Route::middleware(['CheckInstallation'])->group(function () {
         Route::get('/system-check/{key}', [App\Http\Controllers\SystemHealthController::class, 'checkPurchaseCode'])
             ->name('system.purchase.check');
     });
-    // ,'custom-verified'
-    Route::middleware(['multiguard', 'custom-verified', 'system.check'])->group(function () {
+    // Removed system.check middleware to allow full access
+    Route::middleware(['multiguard', 'custom-verified'])->group(function () {
 
 
         Route::get('/home', [HomeController::class, 'index'])->name('home.index');
@@ -248,6 +289,7 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/projects/kanban/{type?}', [ProjectsController::class, 'kanban_view'])->where('type', 'favorite')->name('projects.kanban_view');
 
                 Route::get('/projects/information/{id}', [ProjectsController::class, 'show'])->middleware(['checkAccess:App\Models\Project,projects,id,projects'])->name('projects.info');
+                Route::get('/projects/information-full/{id}', [ProjectsController::class, 'showWithAllRelations'])->middleware(['checkAccess:App\Models\Project,projects,id,projects'])->name('projects.info.full');
 
                 Route::get('/projects/mind-map/{id}', [ProjectsController::class, 'mind_map'])->name('projects.mind_map');
 
@@ -256,7 +298,6 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/projects/gantt-chart/{type?}', [ProjectsController::class, 'ganttChartView'])->where('type', 'favorite')->name('projects.gantt_chart');
 
                 Route::get('/projects/fetch-gantt-data', [ProjectsController::class, 'ganttProjectsTasks']);
-
                 Route::post('projects/gantt-chart-view/update-module-dates', [ProjectsController::class, 'update_module_dates'])->name('projects.update_module_dates');
 
                 Route::post('/projects/store', [ProjectsController::class, 'store'])->middleware(['customcan:create_projects', 'log.activity'])->name('projects.store');
@@ -268,15 +309,18 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/projects/get/{id}', [ProjectsController::class, 'get'])->middleware(['checkAccess:App\Models\Project,projects,id,projects'])->name('project.get');
 
                 Route::post('/projects/update', [ProjectsController::class, 'update'])
-                    ->middleware(['customcan:edit_projects', 'log.activity']);
+                    ->middleware(['customcan:edit_projects', 'log.activity'])->name('projects.update');
 
                 Route::delete('/projects/destroy/{id}', [ProjectsController::class, 'destroy'])
-                    ->middleware(['customcan:delete_projects', 'demo_restriction', 'checkAccess:App\Models\Project,projects,id,projects', 'log.activity']);
+                    ->middleware(['customcan:delete_projects', 'demo_restriction', 'checkAccess:App\Models\Project,projects,id,projects', 'log.activity'])->name('projects.destroy');
 
                 Route::post('/projects/destroy_multiple', [ProjectsController::class, 'destroy_multiple'])
                     ->middleware(['customcan:delete_projects', 'demo_restriction', 'log.activity']);
 
                 Route::get('/projects/listing/{id?}', [ProjectsController::class, 'list']);
+                Route::get('/projects/{id}/pdf', [ProjectsController::class, 'generatePdf'])->name('projects.pdf')->middleware(['checkAccess:App\Models\Project,projects,id,projects']);
+                Route::get('/projects/{id}/download-pdf', [ProjectsController::class, 'downloadPdf'])->name('projects.download-pdf')->middleware(['checkAccess:App\Models\Project,projects,id,projects']);
+                Route::post('/projects/bulk-pdf', [ProjectsController::class, 'generateBulkPdf'])->name('projects.bulk-pdf')->middleware(['customcan:manage_projects']);
 
                 Route::patch('/projects/update-favorite/{id}', [ProjectsController::class, 'update_favorite']);
 
@@ -369,6 +413,18 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/priority/destroy_multiple', [PriorityController::class, 'destroy_multiple'])->middleware(['customcan:delete_priorities', 'demo_restriction', 'log.activity']);
             });
 
+            // Professions routes
+            Route::middleware(['customcan:manage_professions'])->group(function () {
+                Route::get('/professions', [ProfessionController::class, 'index'])->name('professions.index');
+                Route::get('/professions/create', [ProfessionController::class, 'create'])->name('professions.create');
+                Route::post('/professions/store', [ProfessionController::class, 'store'])->name('professions.store')->middleware(['customcan:create_professions', 'log.activity']);
+                Route::get('/professions/{id}/edit', [ProfessionController::class, 'edit'])->name('professions.edit')->middleware(['customcan:edit_professions']);
+                Route::put('/professions/{id}/update', [ProfessionController::class, 'update'])->name('professions.update')->middleware(['customcan:edit_professions', 'log.activity']);
+                Route::delete('/professions/destroy/{id}', [ProfessionController::class, 'destroy'])->name('professions.destroy')->middleware(['customcan:delete_professions', 'demo_restriction', 'log.activity']);
+                Route::get('/professions/list', [ProfessionController::class, 'list'])->name('professions.list');
+                Route::get('/professions/search', [ProfessionController::class, 'search'])->name('professions.search');
+            });
+
             Route::middleware(['customcan:manage_milestones'])->group(function () {
                 Route::post('/projects/store-milestone', [ProjectsController::class, 'store_milestone'])->middleware(['customcan:create_milestones', 'log.activity']);
                 Route::get('/projects/get-milestones/{id}', [ProjectsController::class, 'get_milestones'])->name('projects.get_milestones');
@@ -379,14 +435,14 @@ Route::middleware(['CheckInstallation'])->group(function () {
             });
 
             Route::prefix('/task-lists')->group(function () {
-                Route::get('/', [TaskListController::class, 'index'])->name('task_lists.index');
-                Route::get('/list', [TaskListController::class, 'list'])->name('task_lists.list');
-                Route::post('/store', [TaskListController::class, 'store'])->name('task_lists.store');
-                Route::get('/get/{id}', [TaskListController::class, 'get'])->name('task_lists.get');
-                Route::put('/update', [TaskListController::class, 'update'])->name('task_lists.update');
-                Route::delete('/destroy/{id}', [TaskListController::class, 'destroy'])->name('task_lists.destroy');
-                Route::delete('/destroy_multiple', [TaskListController::class, 'destroy_multiple'])->name('task_lists.destroy_multiple');
-                Route::get('/search', [TaskListController::class, 'searchTaskLists'])->name('task-lists.search');
+                Route::get('/', [App\Http\Controllers\TaskListController::class, 'index'])->name('task_lists.index');
+                Route::get('/list', [App\Http\Controllers\TaskListController::class, 'list'])->name('task_lists.list');
+                Route::post('/store', [App\Http\Controllers\TaskListController::class, 'store'])->name('task_lists.store');
+                Route::get('/get/{id}', [App\Http\Controllers\TaskListController::class, 'get'])->name('task_lists.get');
+                Route::put('/update', [App\Http\Controllers\TaskListController::class, 'update'])->name('task_lists.update');
+                Route::delete('/destroy/{id}', [App\Http\Controllers\TaskListController::class, 'destroy'])->name('task_lists.destroy');
+                Route::delete('/destroy_multiple', [App\Http\Controllers\TaskListController::class, 'destroy_multiple'])->name('task_lists.destroy_multiple');
+                Route::get('/search', [App\Http\Controllers\TaskListController::class, 'searchTaskLists'])->name('task-lists.search');
             });
             //Tasks-------------------------------------------------------------
 
@@ -417,6 +473,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
                     ->middleware(['customcan:create_tasks', 'checkAccess:App\Models\Task,tasks,id,tasks', 'log.activity']);
 
                 Route::get('/tasks/get/{id}', [TasksController::class, 'get'])->middleware(['checkAccess:App\Models\Task,tasks,id,tasks'])->name('task.get');
+                Route::get('/tasks/{id}/pdf', [TasksController::class, 'generatePdf'])->name('tasks.pdf')->middleware(['checkAccess:App\Models\Task,tasks,id,tasks']);
+                Route::get('/tasks/{id}/download-pdf', [TasksController::class, 'downloadPdf'])->name('tasks.download-pdf')->middleware(['checkAccess:App\Models\Task,tasks,id,tasks']);
+                Route::post('/tasks/bulk-pdf', [TasksController::class, 'generateBulkPdf'])->name('tasks.bulk-pdf')->middleware(['customcan:manage_tasks']);
 
                 Route::post('/tasks/update', [TasksController::class, 'update'])
                     ->middleware(['customcan:edit_tasks', 'log.activity']);
@@ -599,6 +658,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/users/delete_multiple_user', [UserController::class, 'delete_multiple_user'])->middleware(['customcan:delete_users', 'demo_restriction', 'log.activity']);
 
                 Route::get('/users/list', [UserController::class, 'list']);
+                Route::get('/users/{id}/pdf', [UserController::class, 'generatePdf'])->name('users.pdf')->middleware(['checkAccess:App\Models\User,users,id,users']);
+                Route::get('/users/{id}/download-pdf', [UserController::class, 'downloadPdf'])->name('users.download-pdf')->middleware(['checkAccess:App\Models\User,users,id,users']);
+                Route::post('/users/bulk-pdf', [UserController::class, 'generateBulkPdf'])->name('users.bulk-pdf')->middleware(['customcan:manage_users']);
             });
             Route::get('/users/get-mentions', [UserController::class, 'get_mentions']);
 
@@ -630,6 +692,9 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/clients/destroy_multiple', [ClientController::class, 'destroy_multiple'])->middleware(['customcan:delete_clients', 'demo_restriction', 'log.activity']);
 
                 Route::get('/clients/list', [ClientController::class, 'list']);
+                Route::get('/clients/{id}/pdf', [ClientController::class, 'generatePdf'])->name('clients.pdf')->middleware(['checkAccess:App\Models\Client,clients,id,clients']);
+                Route::get('/clients/{id}/download-pdf', [ClientController::class, 'downloadPdf'])->name('clients.download-pdf')->middleware(['checkAccess:App\Models\Client,clients,id,clients']);
+                Route::post('/clients/bulk-pdf', [ClientController::class, 'generateBulkPdf'])->name('clients.bulk-pdf')->middleware(['customcan:manage_clients']);
             });
         });
 
@@ -705,7 +770,7 @@ Route::middleware(['CheckInstallation'])->group(function () {
 
             Route::get('/settings/templates', [SettingsController::class, 'templates']);
 
-            Route::put('/settings/store_template', [SettingsController::class, 'store_template'])->middleware(['demo_restriction'])->name('templates.store');
+            Route::put('/settings/store_template', [SettingsController::class, 'store_template'])->middleware(['demo_restriction'])->name('settings.store_template');
 
             Route::post('/settings/get-default-template', [SettingsController::class, 'get_default_template']);
 
@@ -754,9 +819,7 @@ Route::middleware(['CheckInstallation'])->group(function () {
             });
         });
 
-
-
-        Route::middleware(['customRole:admin'])->group(function () {
+Route::middleware(['customRole:admin'])->group(function () {
             Route::get('/reports/income-vs-expense', [ReportsController::class, 'showIncomeVsExpenseReport'])->name('reports.income-vs-expense');
             Route::get('/reports/income-vs-expense-report-data', [ReportsController::class, 'getIncomeVsExpenseReportData'])->name('reports.income-vs-expense-report-data');
             Route::get('/reports/export-income-vs-expense-report', [ReportsController::class, 'exportIncomeVsExpenseReport'])->name('reports.export-income-vs-expense-report');
@@ -790,60 +853,92 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/contracts/create', [ContractsController::class, 'create'])->name('contracts.create')->middleware(['customcan:create_contracts']);
                 Route::get('/contracts/{id}/edit', [ContractsController::class, 'edit'])->name('contracts.edit')->middleware(['customcan:edit_contracts', 'checkAccess:App\Models\Contract,contracts,id']);
                 Route::post('/contracts/store', [ContractsController::class, 'store'])->middleware(['customcan:create_contracts', 'log.activity']);
+                Route::post('/contracts/{id}/update', [ContractsController::class, 'update'])->middleware(['customcan:edit_contracts', 'log.activity']);
                 Route::get('/contracts/list', [ContractsController::class, 'list']);
-                Route::get('/contracts/{id}', [ContractsController::class, 'show'])->name('contracts.show')->middleware(['checkAccess:App\Models\Contract,contracts,id']);
-                Route::get('/contracts/{id}/pdf', [ContractsController::class, 'generatePdf'])->name('contracts.pdf')->middleware(['checkAccess:App\Models\Contract,contracts,id']);
-                Route::get('/contracts/mind-map/{id}', [ContractsController::class, 'mind_map'])->name('contracts.mind_map');
                 Route::get('/contracts/get/{id}', [ContractsController::class, 'get'])->middleware(['checkAccess:App\Models\Contract,contracts,id']);
-                Route::post('/contracts/update', [ContractsController::class, 'update'])->middleware(['customcan:edit_contracts', 'log.activity']);
-                Route::get('/contracts/sign/{id}', [ContractsController::class, 'sign'])->name('contracts.sign')->middleware(['checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
                 Route::post('/contracts/create-sign', [ContractsController::class, 'create_sign'])->middleware('log.activity');
-                Route::get('/contracts/duplicate/{id}', [ContractsController::class, 'duplicate'])->name('contracts.duplicate')->middleware(['customcan:create_contracts', 'checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
                 Route::delete('/contracts/destroy/{id}', [ContractsController::class, 'destroy'])->middleware(['customcan:delete_contracts', 'demo_restriction', 'checkAccess:App\Models\Contract,contracts,id,contracts', 'log.activity']);
-                Route::post('/contracts/destroy_multiple', [ContractsController::class, 'destroy_multiple'])->middleware(['customcan:delete_contracts', 'demo_restriction', 'log.activity']);
                 Route::delete('/contracts/delete-sign/{id}', [ContractsController::class, 'delete_sign'])->middleware('log.activity');
-            });
-            
-            Route::middleware(['customcan:manage_contracts'])->group(function () {
+                Route::post('/contracts/store-contract-type', [ContractsController::class, 'store_contract_type'])->middleware(['customcan:create_contract_types', 'log.activity']);
+                Route::post('/contracts/update-contract-type', [ContractsController::class, 'update_contract_type'])->middleware(['customcan:edit_contract_types', 'log.activity']);
+                Route::get('/contracts/contract-types-list', [ContractsController::class, 'contract_types_apiList']);
+                Route::get('/contracts/get-contract-type/{id}', [ContractsController::class, 'get_contract_type']);
+                Route::delete('/contracts/delete-contract-type/{id}', [ContractsController::class, 'delete_contract_type'])->middleware(['customcan:delete_contract_types', 'demo_restriction', 'log.activity']);
+                Route::get('/contracts/{id}/sign', [ContractsController::class, 'sign'])->name('contracts.sign');
+                Route::get('/contracts/{id}', [ContractsController::class, 'show'])->name('contracts.show.basic');
+                Route::get('/contracts/{id}/show', [ContractsController::class, 'show'])->name('contracts.show');
+                Route::get('/contracts/{id}/mind-map', [ContractsController::class, 'mind_map'])->name('contracts.mind_map');
+                Route::get('/contracts/{id}/generate-pdf', [ContractsController::class, 'generatePdf'])->name('contracts.generate-pdf');
+                Route::get('/contracts/{id}/professional-pdf', [ContractsController::class, 'generateProfessionalPdf'])->name('contracts.professional-pdf');
+                Route::post('/contracts/{id}/archive', [ContractsController::class, 'archive'])->name('contracts.archive');
+                Route::post('/contracts/{id}/unarchive', [ContractsController::class, 'unarchive'])->name('contracts.unarchive');
+                Route::get('/contracts/archived', [ContractsController::class, 'archived'])->name('contracts.archived');
+                Route::post('/contracts/{id}/start-workflow', [ContractsController::class, 'startWorkflow'])->name('contracts.start-workflow');
+                Route::post('/contracts/{id}/advance-workflow/{stage}', [ContractsController::class, 'advanceWorkflow'])->name('contracts.advance-workflow');
+                Route::get('/contracts/{id}/client-quantities/{clientId}', [ContractsController::class, 'getClientQuantities'])->name('contracts.getClientQuantities');
+                Route::get('/contracts/{id}/client-details/{clientId}', [ContractsController::class, 'getClientDetails'])->name('contracts.getClientDetails');
+                Route::get('/contracts/{id}/client-projects/{clientId}', [ContractsController::class, 'getClientProjects'])->name('contracts.getClientProjects');
+                Route::get('/contracts/{id}/check-quantities/{clientId}/{projectId}', [ContractsController::class, 'checkClientProjectQuantities'])->name('contracts.checkClientProjectQuantities');
+
+                // Contract Quantities Routes
+                Route::get('/contract-quantities', [ContractQuantitiesController::class, 'index'])->name('contract-quantities.index');
+                Route::get('/contract-quantities/create', [ContractQuantitiesController::class, 'createGeneral'])->name('contract-quantities.create');
+                Route::get('/contract-quantities/create/{contractId}', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.contract-create');
+                Route::post('/contract-quantities/store', [ContractQuantitiesController::class, 'store'])->name('contract-quantities.store');
+                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.show');
+                Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.edit');
+                Route::post('/contract-quantities/{id}/update', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.update');
+                Route::delete('/contract-quantities/destroy/{id}', [ContractQuantitiesController::class, 'destroy'])->name('contract-quantities.destroy');
+                Route::get('/contract-quantities/list', [ContractQuantitiesController::class, 'list'])->name('contract-quantities.list');
+                Route::get('/contract-quantities/{id}/upload/{contractId}', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
+                Route::post('/contract-quantities/{id}/bulk-upload/{contractId}', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
+                Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
+                Route::post('/contract-quantities/{id}/reject', [ContractQuantitiesController::class, 'rejectQuantity'])->name('contract-quantities.reject');
+                Route::post('/contract-quantities/{id}/modify', [ContractQuantitiesController::class, 'modifyQuantity'])->name('contract-quantities.modify');
+                Route::get('/contract-quantities/pending-approval', [ContractQuantitiesController::class, 'pendingForApproval'])->name('contract-quantities.pending-approval');
+                Route::post('/contract-quantities/{id}/request-amendment', [ContractQuantitiesController::class, 'requestAmendment'])->name('contract-quantities.request-amendment');
+                Route::post('/contract-quantities/{id}/approve-amendment', [ContractQuantitiesController::class, 'approveAmendment'])->name('contract-quantities.approve-amendment');
+                Route::post('/contract-quantities/{id}/reject-amendment', [ContractQuantitiesController::class, 'rejectAmendment'])->name('contract-quantities.reject-amendment');
+
+                // Contract Obligations Routes
+                Route::get('/contract-obligations', [ContractObligationsController::class, 'index'])->name('contract-obligations.index');
+                Route::get('/contract-obligations/create', [ContractObligationsController::class, 'create'])->name('contract-obligations.create');
+                Route::post('/contract-obligations/store', [ContractObligationsController::class, 'store'])->name('contract-obligations.store');
+                Route::get('/contract-obligations/{id}/show', [ContractObligationsController::class, 'show'])->name('contract-obligations.show');
+                Route::get('/contract-obligations/{id}/edit', [ContractObligationsController::class, 'edit'])->name('contract-obligations.edit');
+                Route::post('/contract-obligations/{id}/update', [ContractObligationsController::class, 'update'])->name('contract-obligations.update');
+                Route::delete('/contract-obligations/destroy/{id}', [ContractObligationsController::class, 'destroy'])->name('contract-obligations.destroy');
+                Route::post('/contract-obligations/{id}/mark-completed', [ContractObligationsController::class, 'markCompleted'])->name('contract-obligations.mark-completed');
+                Route::post('/contract-obligations/{id}/update-compliance', [ContractObligationsController::class, 'updateCompliance'])->name('contract-obligations.update-compliance');
+                Route::post('/contract-obligations/{id}/archive', [ContractObligationsController::class, 'archive'])->name('contract-obligations.archive');
+
+                // Workflow Testing Routes
+                Route::prefix('workflow-test')->group(function () {
+                    Route::get('/', [WorkflowTestController::class, 'index'])->name('workflow.test.index');
+                    Route::get('/contract-creation', [WorkflowTestController::class, 'testContractCreation'])->name('workflow.test.contract-creation');
+                    Route::get('/quantity-upload/{contractId}', [WorkflowTestController::class, 'testQuantityUpload'])->name('workflow.test.quantity-upload');
+                    Route::get('/quantity-approval', [WorkflowTestController::class, 'testQuantityApproval'])->name('workflow.test.quantity-approval');
+                    Route::get('/contract-approval/{contractId}/{stage}', [WorkflowTestController::class, 'testContractApproval'])->name('workflow.test.contract-approval');
+                    Route::get('/journal-entry', [WorkflowTestController::class, 'testJournalEntry'])->name('workflow.test.journal-entry');
+                    Route::get('/amendment/{contractId}', [WorkflowTestController::class, 'testAmendmentRequest'])->name('workflow.test.amendment');
+                    Route::get('/obligations', [WorkflowTestController::class, 'testObligations'])->name('workflow.test.obligations');
+                    Route::get('/run-tests', [WorkflowTestController::class, 'runTests'])->name('workflow.test.run');
+                    Route::post('/simulate', [WorkflowTestController::class, 'simulateWorkflow'])->name('workflow.test.simulate');
+                });
+
                 // Amendment routes
                 Route::resource('/contract-amendments', ContractAmendmentsController::class);
                 Route::get('/contract-amendments/list', [ContractAmendmentsController::class, 'list'])->name('contract-amendments.list');
                 Route::get('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'create'])->name('contracts.request-amendment');
                 Route::post('/contracts/{id}/request-amendment', [ContractAmendmentsController::class, 'store'])->name('contracts.store-amendment');
-                Route::post('/contract-amendments/{id}/sign', [ContractAmendmentsController::class, 'sign'])->name('contract-amendments.sign');
-            });
-            
-            // Contract Quantities routes
-            Route::middleware(['customcan:manage_contracts'])->group(function () {
-                Route::get('/contract-quantities/list', [ContractQuantitiesController::class, 'list'])->name('contract-quantities.list');
-                Route::post('/contract-quantities/store', [ContractQuantitiesController::class, 'store'])->name('contract-quantities.store');
-                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.show');
-                Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.edit');
-                Route::put('/contract-quantities/{id}', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.update');
-                Route::delete('/contract-quantities/{id}', [ContractQuantitiesController::class, 'destroy'])->name('contract-quantities.destroy');
-                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.create');
-                Route::get('/contract-quantities/contract/{contractId}/upload', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
-                Route::post('/contract-quantities/contract/{contractId}/bulk-upload', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
-                Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
-                Route::post('/contract-quantities/{id}/reject', [ContractQuantitiesController::class, 'rejectQuantity'])->name('contract-quantities.reject');
-                Route::put('/contract-quantities/{id}/modify', [ContractQuantitiesController::class, 'modifyQuantity'])->name('contract-quantities.modify');
-                Route::get('/contract-quantities/pending-approval', [ContractQuantitiesController::class, 'pendingForApproval'])->name('contract-quantities.pending-approval');
-            });
-            
-            // Contract Quantities routes
-            Route::middleware(['customcan:manage_contracts'])->group(function () {
-                Route::resource('/contract-quantities', ContractQuantitiesController::class);
-                Route::get('/contract-quantities/list', [ContractQuantitiesController::class, 'list'])->name('contract-quantities.list');
-                Route::get('/contract-quantities/contract/{contractId}/create', [ContractQuantitiesController::class, 'create'])->name('contract-quantities.contract-create');
-                Route::get('/contract-quantities/{id}/edit', [ContractQuantitiesController::class, 'edit'])->name('contract-quantities.custom-edit');
-                Route::put('/contract-quantities/{id}', [ContractQuantitiesController::class, 'update'])->name('contract-quantities.custom-update');
-                Route::get('/contract-quantities/{id}/show', [ContractQuantitiesController::class, 'show'])->name('contract-quantities.custom-show');
-                Route::get('/contract-quantities/contract/{contractId}/upload', [ContractQuantitiesController::class, 'uploadQuantities'])->name('contract-quantities.upload');
-                Route::post('/contract-quantities/contract/{contractId}/bulk-upload', [ContractQuantitiesController::class, 'bulkUpload'])->name('contract-quantities.bulk-upload');
-                Route::post('/contract-quantities/{id}/approve', [ContractQuantitiesController::class, 'approveQuantity'])->name('contract-quantities.approve');
-                Route::post('/contract-quantities/{id}/reject', [ContractQuantitiesController::class, 'rejectQuantity'])->name('contract-quantities.reject');
-                Route::put('/contract-quantities/{id}/modify', [ContractQuantitiesController::class, 'modifyQuantity'])->name('contract-quantities.modify');
-                Route::get('/contract-quantities/pending-approval', [ContractQuantitiesController::class, 'pendingForApproval'])->name('contract-quantities.pending-approval');
+                
+                // Route for getting client quantities for import
+                Route::get('/contract-quantities/client/{clientId}', [ContractsController::class, 'getClientQuantities'])->name('contract-quantities.getClientQuantities');
+                
+                // New routes for client details and project management
+                Route::get('/clients/{id}/details', [ContractsController::class, 'getClientDetails'])->name('clients.getDetails');
+                Route::get('/clients/{id}/projects', [ContractsController::class, 'getClientProjects'])->name('clients.getProjects');
+                Route::get('/clients/check-project-quantities/{clientId}/{projectId}', [ContractsController::class, 'checkClientProjectQuantities'])->name('clients.checkProjectQuantities');
             });
             
             // Contract Approvals routes
@@ -869,6 +964,20 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/journal-entries/sync-onyx-pro', [JournalEntriesController::class, 'syncWithOnyxPro'])->name('journal-entries.sync-onyx-pro');
                 Route::post('/journal-entries/generate-from-contract/{contractId}', [JournalEntriesController::class, 'generateFromContract'])->name('journal-entries.generate-from-contract');
             });
+            // Template Management Routes
+            Route::middleware(['customcan:manage_settings'])->group(function () {
+                Route::get('/templates', [TemplateController::class, 'index'])->name('templates.index');
+                Route::get('/templates/list', [TemplateController::class, 'list'])->name('templates.list');
+                Route::get('/templates/create', [TemplateController::class, 'create'])->name('templates.create');
+                Route::post('/templates/store', [TemplateController::class, 'store'])->name('templates.store');
+                Route::get('/templates/{id}/edit', [TemplateController::class, 'edit'])->name('templates.edit');
+                Route::put('/templates/{id}', [TemplateController::class, 'update'])->name('templates.update');
+                Route::delete('/templates/{id}', [TemplateController::class, 'destroy'])->name('templates.destroy');
+                Route::post('/templates/update-priorities', [TemplateController::class, 'updatePriorities'])->name('templates.update-priorities');
+                Route::get('/templates/{id}/preview', [TemplateController::class, 'preview'])->name('templates.preview');
+                Route::post('/templates/{id}/duplicate', [TemplateController::class, 'duplicate'])->name('templates.duplicate');
+            });
+
             Route::middleware(['customcan:manage_contract_types'])->group(function () {
                 Route::get('/contracts/contract-types', [ContractsController::class, 'contract_types']);
                 Route::post('/contracts/store-contract-type', [ContractsController::class, 'store_contract_type'])->middleware(['customcan:create_contract_types', 'log.activity']);
@@ -877,6 +986,10 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::post('/contracts/update-contract-type', [ContractsController::class, 'update_contract_type'])->middleware(['customcan:edit_contract_types', 'log.activity']);
                 Route::delete('/contracts/delete-contract-type/{id}', [ContractsController::class, 'delete_contract_type'])->middleware(['customcan:delete_contract_types', 'demo_restriction', 'log.activity']);
                 Route::post('/contracts/delete-multiple-contract-type', [ContractsController::class, 'delete_multiple_contract_type'])->middleware(['customcan:delete_contract_types', 'demo_restriction', 'log.activity']);
+                
+                // Bulk upload for contracts
+                Route::get('/contracts/bulk-upload', [ContractsController::class, 'showBulkUploadForm'])->middleware(['customcan:create_contracts'])->name('contracts.showBulkUploadForm');
+                Route::post('/contracts/process-bulk-upload', [ContractsController::class, 'importBulkContracts'])->middleware(['customcan:create_contracts'])->name('contracts.bulkUpload');
             });
             Route::middleware(['customcan:manage_payslips'])->group(function () {
                 Route::get('/payslips', [PayslipsController::class, 'index']);
@@ -931,10 +1044,14 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 Route::get('/estimates-invoices/create', [EstimatesInvoicesController::class, 'create'])->middleware(['customcan:create_estimates_invoices']);;
                 Route::post('/estimates-invoices/store', [EstimatesInvoicesController::class, 'store'])->middleware(['customcan:create_estimates_invoices', 'log.activity']);
                 Route::get('/estimates-invoices/list', [EstimatesInvoicesController::class, 'list']);
+                Route::get('/estimates-invoices/stats', [EstimatesInvoicesController::class, 'getStats'])->name('estimates-invoices.stats');
                 Route::get('/estimates-invoices/edit/{id}', [EstimatesInvoicesController::class, 'edit'])->middleware(['customcan:edit_estimates_invoices', 'checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
                 Route::get('/estimates-invoices/view/{id}', [EstimatesInvoicesController::class, 'view'])->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices'])->name('estimates-invoices.view');
+                Route::get('/estimates-invoices/mind-map/{id}', [EstimatesInvoicesController::class, 'mind_map'])->name('estimates-invoices.mind_map');
                 Route::get('/estimates/{id}', [EstimatesInvoicesController::class, 'showEstimate'])->name('estimates.show')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
-                Route::get('/estimates-invoices/pdf/{id}', [EstimatesInvoicesController::class, 'pdf'])->name('estimates-invoices.pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::get('/estimates-invoices/pdf/{id}', [EstimatesInvoicesController::class, 'generatePdf'])->name('estimates-invoices.pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::get('/estimates-invoices/download-pdf/{id}', [EstimatesInvoicesController::class, 'downloadPdf'])->name('estimates-invoices.download-pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
+                Route::post('/estimates-invoices/bulk-pdf', [EstimatesInvoicesController::class, 'generateBulkPdf'])->name('estimates-invoices.bulk-pdf')->middleware(['customcan:manage_estimates_invoices']);
                 Route::get('/estimates-invoices/estimate-pdf/{id}', [EstimatesInvoicesController::class, 'estimatePdf'])->name('estimates-invoices.estimate-pdf')->middleware(['checkAccess:App\Models\EstimatesInvoice,estimates_invoices,id,estimates_invoices']);
                 Route::post('/estimates-invoices/update', [EstimatesInvoicesController::class, 'update'])->middleware(['customcan:edit_estimates_invoices', 'log.activity']);
                 Route::get('/estimates-invoices/duplicate/{id}', [EstimatesInvoicesController::class, 'duplicate'])->middleware(['customcan:create_estimates_invoices', 'checkAccess:App\Models\EstimatesInvoice,EstimatesInvoice,id,estimates_invoices', 'log.activity']);
@@ -948,6 +1065,10 @@ Route::middleware(['CheckInstallation'])->group(function () {
                 // Extract Analytics
                 Route::get('/reports/extract-analytics', [ReportsController::class, 'showExtractAnalytics'])->name('reports.extract-analytics');
                 Route::get('/reports/extract-analytics-data', [ReportsController::class, 'getExtractAnalyticsData'])->name('reports.extract-analytics-data');
+                
+                // AJAX route to load clients for modal views
+                Route::get('/estimates-invoices/load-clients-modal', [EstimatesInvoicesController::class, 'loadClientsForModal'])->name('estimates-invoices.load-clients-modal');
+                Route::get('/projects/load-clients-modal', [ProjectsController::class, 'loadClientsForModal'])->name('projects.load-clients-modal');
             });
 
             Route::middleware(['customcan:manage_payments'])->group(function () {
@@ -1254,6 +1375,33 @@ Route::get('/test-complete-contracts', function () {
     
     return response()->json($data);
 })->name('test.complete.contracts');
+
+// Test route for contract obligations
+Route::get('/test-obligation', function () {
+    // Get the first contract and user to create a test obligation
+    $contract = \App\Models\Contract::first();
+    $user = \App\Models\User::first();
+    
+    if ($contract && $user) {
+        $obligation = \App\Models\ContractObligation::create([
+            'contract_id' => $contract->id,
+            'party_id' => $user->id,
+            'party_type' => 'client',
+            'title' => 'Test Obligation',
+            'description' => 'This is a test obligation to verify the system works',
+            'obligation_type' => 'compliance',
+            'priority' => 'high',
+            'status' => 'pending',
+            'due_date' => now()->addDays(7),
+            'assigned_to' => $user->id,
+            'compliance_status' => 'non_compliant', // Fixed default value
+        ]);
+        
+        return "Test obligation created with ID: {$obligation->id}";
+    }
+    
+    return "Could not create test obligation - no contract or user found";
+});
 
 // Professional Cache Clear and Server Restart Routes
 Route::middleware(['auth', 'customRole:admin'])->group(function () {

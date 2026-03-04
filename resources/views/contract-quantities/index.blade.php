@@ -26,7 +26,7 @@
             <div>
                 <a href="{{ route('contract-quantities.create') }}">
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left" data-bs-original-title="<?= get_label('create_contract_quantity', 'Create Contract Quantity') ?>">
-                        <i class='bx bx-plus'></i>
+                        <i class='bx bx-plus'></i> <?= get_label('create', 'Create') ?>
                     </button>
                 </a>
             </div>
@@ -37,22 +37,19 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5><?= get_label('contract_quantities_list', 'Contract Quantities List') ?></h5>
+                        <div class="dt-plugin-buttons d-flex align-items-center gap-2">
+                            <input type="text" id="searchInput" class="form-control" style="width: 200px;" placeholder="<?= get_label('search', 'Search') ?>...">
+                            <select id="statusFilter" class="form-control" style="width: 150px;">
+                                <option value=""><?= get_label('all_statuses', 'All Statuses') ?></option>
+                                <option value="pending"><?= get_label('pending', 'Pending') ?></option>
+                                <option value="approved"><?= get_label('approved', 'Approved') ?></option>
+                                <option value="rejected"><?= get_label('rejected', 'Rejected') ?></option>
+                                <option value="modified"><?= get_label('modified', 'Modified') ?></option>
+                            </select>
+                            <button class="btn btn-primary" id="filterBtn"><?= get_label('filter', 'Filter') ?></button>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="dt-plugin-buttons">
-                            <div class="form-group d-flex align-items-center">
-                                <input type="text" id="searchInput" class="form-control mr-2" placeholder="<?= get_label('search', 'Search') ?>...">
-                                <select id="statusFilter" class="form-control mr-2">
-                                    <option value=""><?= get_label('all_statuses', 'All Statuses') ?></option>
-                                    <option value="pending"><?= get_label('pending', 'Pending') ?></option>
-                                    <option value="approved"><?= get_label('approved', 'Approved') ?></option>
-                                    <option value="rejected"><?= get_label('rejected', 'Rejected') ?></option>
-                                    <option value="modified"><?= get_label('modified', 'Modified') ?></option>
-                                </select>
-                                <button class="btn btn-primary ml-2" id="filterBtn"><?= get_label('filter', 'Filter') ?></button>
-                            </div>
-                        </div>
-
                         <div class="table-responsive">
                             <table class="table table-striped" id="contract_quantities_table" data-toggle="table" data-url="{{ route('contract-quantities.list') }}" data-query-params="queryParamsContractQuantities" data-pagination="true" data-side-pagination="server" data-page-list="[10, 25, 50, 100]" data-search="false">
                                 <thead>
@@ -81,5 +78,34 @@
 
     @push('scripts')
     <script src="{{ asset('assets/js/pages/contract-quantities.js') }}"></script>
+    <script>
+        function queryParamsContractQuantities(params) {
+            params.status = $('#statusFilter').val();
+            params.search = $('#searchInput').val();
+            return params;
+        }
+
+        $(document).ready(function() {
+            $('#filterBtn').on('click', function() {
+                $('#contract_quantities_table').bootstrapTable('refresh', {
+                    query: queryParamsContractQuantities({})
+                });
+            });
+
+            $('#searchInput').on('keyup', function() {
+                if ($(this).val().length > 2 || $(this).val() === '') {
+                    $('#contract_quantities_table').bootstrapTable('refresh', {
+                        query: queryParamsContractQuantities({})
+                    });
+                }
+            });
+
+            $('#statusFilter').on('change', function() {
+                $('#contract_quantities_table').bootstrapTable('refresh', {
+                    query: queryParamsContractQuantities({})
+                });
+            });
+        });
+    </script>
     @endpush
 @endsection

@@ -56,12 +56,27 @@ use App\Models\Tax;
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('contract_number', 'رقم العقد') }}:</strong></div>
-                                <div class="col-6">1</div>
+                                <div class="col-6">
+                                    @if(isset($relatedContract))
+                                        {{ $relatedContract->id }}
+                                    @else
+                                        {{ $estimate_invoice->contract_id ?? 'N/A' }}
+                                    @endif
+                                </div>
                             </div>
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('item', 'البند') }}:</strong></div>
-                                <div class="col-6">- 11الجبسيات</div>
+                                <div class="col-6">
+                                    @if(count($estimate_invoice->items) > 0)
+                                        @foreach($estimate_invoice->items as $item)
+                                            {{ $item->title ?? $item->name ?? 'N/A' }}
+                                            @if(!$loop->last), @endif
+                                        @endforeach
+                                    @else
+                                        {{ $estimate_invoice->name ?? '- 11الجبسيات' }}
+                                    @endif
+                                </div>
                             </div>
                             
                             <div class="row mb-2">
@@ -77,12 +92,24 @@ use App\Models\Tax;
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('project_name', 'اسم المشروع') }}:</strong></div>
-                                <div class="col-6">مشروع بنك عدن الأول الاسلامي - كريتر</div>
+                                <div class="col-6">
+                                    @if(isset($relatedProject))
+                                        {{ $relatedProject->title ?? 'N/A' }}
+                                    @else
+                                        مشروع بنك عدن الأول الاسلامي - كريتر
+                                    @endif
+                                </div>
                             </div>
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('project_location', 'موقع المشروع') }}:</strong></div>
-                                <div class="col-6">الجمهورية اليمنية - عدن - صيرة</div>
+                                <div class="col-6">
+                                    @if(isset($relatedProject) && $relatedProject->location)
+                                        {{ $relatedProject->location }}
+                                    @else
+                                        الجمهورية اليمنية - عدن - صيرة
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -96,12 +123,24 @@ use App\Models\Tax;
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('engineer_name', 'اسم المهندس المشرف') }}:</strong></div>
-                                <div class="col-6">—</div>
+                                <div class="col-6">
+                                    @if(isset($engineer))
+                                        {{ $engineer->first_name ?? '' }} {{ $engineer->last_name ?? '' }}
+                                    @else
+                                        —
+                                    @endif
+                                </div>
                             </div>
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('contractor_name', 'اسم المقاول') }}:</strong></div>
-                                <div class="col-6">محمد علي عبده وهبان</div>
+                                <div class="col-6">
+                                    @if(isset($contractor))
+                                        {{ $contractor->first_name ?? '' }} {{ $contractor->last_name ?? '' }}
+                                    @else
+                                        محمد علي عبده وهبان
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -112,7 +151,13 @@ use App\Models\Tax;
                             
                             <div class="row mb-2">
                                 <div class="col-6"><strong>{{ get_label('contract_value', 'قيمة العقد (YER)') }}:</strong></div>
-                                <div class="col-6">{{ format_currency(13600.00) }}</div>
+                                <div class="col-6">
+                                    @if(isset($relatedContract) && $relatedContract->value)
+                                        {{ format_currency($relatedContract->value) }}
+                                    @else
+                                        {{ format_currency(13600.00) }}
+                                    @endif
+                                </div>
                             </div>
                             
                             <div class="row mb-2">

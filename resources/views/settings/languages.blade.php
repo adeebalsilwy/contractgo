@@ -30,25 +30,8 @@
                             data-bs-original-title="<?= get_label('set_current_language_as_your_primary_language', 'Set current language as your primary language') ?>"><?= get_label('set_as_primary', 'Set as primary') ?></span></a>
                 @endif
             </div>
-            <form action="{{ url('settings/languages/save_labels') }}" class="form-submit-event" method="POST">
-                <input type="hidden" name="redirect_url" value="{{ url('settings/languages') }}">
-                @csrf
-                @method('PUT')
-                <input type="hidden" name="langcode" value="{{ Session::get('locale') }}">
-                <div>
-                    <button type="submit" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left"
-                        data-bs-original-title="<?= get_label('save_language', 'Save language') ?>"><i
-                            class='bx bx-save'></i></button>
-                    <span data-bs-toggle="modal" data-bs-target="#create_language_modal"><a href="javascript:void(0);"
-                            class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left"
-                            data-bs-original-title="<?= get_label('create_language', 'Create language') ?>"><i
-                                class='bx bx-plus'></i></a></span>
-                    <a href="{{ url('settings/languages/manage') }}"><button type="button" class="btn btn-sm btn-primary"
-                            data-bs-toggle="tooltip" data-bs-placement="right"
-                            data-bs-original-title="<?= get_label('manage_languages', 'Manage languages') ?>"><i
-                                class="bx bx-list-ul"></i></button></a>
-                </div>
         </div>
+        
         <?php
         $mainAdminId = getMainAdminId();
         $general_settings = get_settings('general_settings');
@@ -70,6 +53,28 @@
                 </div>
             @endif
         @endif
+        
+        <form action="{{ url('settings/languages/save_labels') }}" class="form-submit-event" method="POST">
+            <input type="hidden" name="redirect_url" value="{{ url('settings/languages') }}">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="langcode" value="{{ Session::get('locale') }}">
+            
+            <div class="d-flex justify-content-between mb-2 mt-4">
+                <div>
+                    <button type="submit" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left"
+                        data-bs-original-title="<?= get_label('save_language', 'Save language') ?>"><i
+                            class='bx bx-save'></i></button>
+                    <span data-bs-toggle="modal" data-bs-target="#create_language_modal"><a href="javascript:void(0);"
+                            class="btn btn-sm btn-primary" data-bs-toggle="tooltip" data-bs-placement="left"
+                            data-bs-original-title="<?= get_label('create_language', 'Create language') ?>"><i
+                                class='bx bx-plus'></i></a></span>
+                    <a href="{{ url('settings/languages/manage') }}"><button type="button" class="btn btn-sm btn-primary"
+                            data-bs-toggle="tooltip" data-bs-placement="right"
+                            data-bs-original-title="<?= get_label('manage_languages', 'Manage languages') ?>"><i
+                                class="bx bx-list-ul"></i></button></a>
+                </div>
+            </div>
         <div class="card mb-4">
             <div class="card-body">
                 <div class="row">
@@ -3067,6 +3072,31 @@
                             </div>
                             <div class="row">
                                 {!! create_label('mind_map', 'Mind Map', Session::get('locale')) !!}
+                                {!! create_label('contract_mind_map', 'Contract Mind Map', Session::get('locale')) !!}
+                                {!! create_label('extract_mind_map', 'Extract Mind Map', Session::get('locale')) !!}
+                                {!! create_label('estimate_mind_map', 'Estimate Mind Map', Session::get('locale')) !!}
+                                {!! create_label('invoice_mind_map', 'Invoice Mind Map', Session::get('locale')) !!}
+                                {!! create_label('mind_map_legend', 'Mind Map Legend', Session::get('locale')) !!}
+                                {!! create_label('export_png', 'Export PNG', Session::get('locale')) !!}
+                                {!! create_label('export_pdf', 'Export PDF', Session::get('locale')) !!}
+                                {!! create_label('legend', 'Legend', Session::get('locale')) !!}
+                                {!! create_label('back_to_extract', 'Back to Extract', Session::get('locale')) !!}
+                                {!! create_label('view_mind_map', 'View Mind Map', Session::get('locale')) !!}
+                                {!! create_label('extract_main', 'Extract Main Node', Session::get('locale')) !!}
+                                {!! create_label('items', 'Items', Session::get('locale')) !!}
+                                {!! create_label('related_extracts', 'Related Extracts', Session::get('locale')) !!}
+                                {!! create_label('extract_details', 'Extract Details', Session::get('locale')) !!}
+                                {!! create_label('client_details', 'Client Details', Session::get('locale')) !!}
+                                {!! create_label('items_summary', 'Items Summary', Session::get('locale')) !!}
+                                {!! create_label('payments_summary', 'Payments Summary', Session::get('locale')) !!}
+                                {!! create_label('related_extract', 'Related Extract', Session::get('locale')) !!}
+                                {!! create_label('total', 'Total', Session::get('locale')) !!}
+                                {!! create_label('type', 'Type', Session::get('locale')) !!}
+                                {!! create_label('value', 'Value', Session::get('locale')) !!}
+                                {!! create_label('subtotal', 'Subtotal', Session::get('locale')) !!}
+                                {!! create_label('fullscreen', 'Fullscreen', Session::get('locale')) !!}
+                                {!! create_label('pdf_export_coming_soon', 'PDF export coming soon', Session::get('locale')) !!}
+                                {!! create_label('fit_view', 'Fit View', Session::get('locale')) !!}
                                 {!! create_label('calendar_view', 'Calendar View', Session::get('locale')) !!}
                             </div>
                             <div class="row">
@@ -3087,6 +3117,41 @@
                                     'confirm_reset_default_menu',
                                     'Are you sure you want to reset the menu order to the default?',
                                     Session::get('locale'),
+                                ) !!}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Additional Labels for Contract Enhancement -->
+        <div style="display: none;">
+            {!! create_label('professions', 'Professions', Session::get('locale')) !!}
+            {!! create_label('profession', 'Profession', Session::get('locale')) !!}
+            {!! create_label('create_profession', 'Create Profession', Session::get('locale')) !!}
+            {!! create_label('edit_profession', 'Edit Profession', Session::get('locale')) !!}
+            {!! create_label('select_profession', 'Select Profession', Session::get('locale')) !!}
+            {!! create_label('enter_profession_name', 'Enter profession name', Session::get('locale')) !!}
+            {!! create_label('enter_profession_description', 'Enter profession description', Session::get('locale')) !!}
+            {!! create_label('profession_created_successfully', 'Profession created successfully', Session::get('locale')) !!}
+            {!! create_label('profession_updated_successfully', 'Profession updated successfully', Session::get('locale')) !!}
+            {!! create_label('profession_deleted_successfully', 'Profession deleted successfully', Session::get('locale')) !!}
+            {!! create_label('contract_information', 'Contract Information', Session::get('locale')) !!}
+            {!! create_label('client_project_info', 'Client & Project Information', Session::get('locale')) !!}
+            {!! create_label('contract_value', 'Contract Value', Session::get('locale')) !!}
+            {!! create_label('enter_contract_title', 'Enter contract title', Session::get('locale')) !!}
+            {!! create_label('enter_contract_description', 'Enter contract description', Session::get('locale')) !!}
+            {!! create_label('validation_errors', 'Please fix the validation errors', Session::get('locale')) !!}
+            {!! create_label('contract_created_successfully', 'Contract created successfully', Session::get('locale')) !!}
+            {!! create_label('create_project', 'Create Project', Session::get('locale')) !!}
+            {!! create_label('enter_project_title', 'Enter project title', Session::get('locale')) !!}
+            {!! create_label('enter_project_description', 'Enter project description', Session::get('locale')) !!}
+            {!! create_label('select_status', 'Select Status', Session::get('locale')) !!}
+            {!! create_label('select_priority', 'Select Priority', Session::get('locale')) !!}
+            {!! create_label('project_created_successfully', 'Project created successfully', Session::get('locale')) !!}
+        </div>
+
                                 ) !!}
                             </div>
                             <div class="row">
@@ -3789,6 +3854,22 @@
                                 {!! create_label('create_task_list', 'Create Task List', Session::get('locale')) !!}
                                 {!! create_label('HRMS', 'HRMS', Session::get('locale')) !!}
                             </div>
+                            <div class="row">
+                                {!! create_label('auto_create_project', 'Auto-create Project', Session::get('locale')) !!}
+                                {!! create_label('auto_create_project_help', 'Automatically create a project with contract details', Session::get('locale')) !!}
+                            </div>
+                            <div class="row">
+                                {!! create_label('project_created_automatically', 'Project created automatically', Session::get('locale')) !!}
+                                {!! create_label('error_loading_clients', 'Error loading clients', Session::get('locale')) !!}
+                            </div>
+                            <div class="row">
+                                {!! create_label('error_loading_contract_types', 'Error loading contract types', Session::get('locale')) !!}
+                                {!! create_label('error_loading_users', 'Error loading users', Session::get('locale')) !!}
+                            </div>
+                            <div class="row">
+                                {!! create_label('error_loading_extracts', 'Error loading extracts', Session::get('locale')) !!}
+                                {!! create_label('error_loading_professions', 'Error loading professions', Session::get('locale')) !!}
+                            </div>
                              {{-- Plugin Labels --}}
                             @php
                                 use App\Helpers\PluginHelper;
@@ -3799,21 +3880,17 @@
                                     {!! create_label($key, $value, Session::get('locale')) !!}
                                 @endforeach
                             </div>
-                            <div class="row">
-
-                                <!-- </div> -->
-                                <div class="card-footer">
-                                    <div class="col-sm-12">
-                                        <div class="mt-4 text-center">
-                                            <button type="submit" class="btn btn-primary me-2"
-                                                id="submit_btn"><?= get_label('update', 'Update') ?></button>
-                                        </div>
+                            
+                            <div class="card-footer">
+                                <div class="col-sm-12">
+                                    <div class="mt-4 text-center">
+                                        <button type="submit" class="btn btn-primary me-2"
+                                            id="submit_btn"><?= get_label('update', 'Update') ?></button>
                                     </div>
                                 </div>
-                                <!-- </div> -->
-                                <!-- </div> -->
                             </div>
-                            </form>
+                        </div>
+                        </form>
                         </div>
                         <!--/ List group with Badges & Pills -->
                     </div>

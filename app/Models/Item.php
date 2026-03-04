@@ -31,6 +31,11 @@ class Item extends Model
         return $this->belongsTo(Tax::class);
     }
 
+    public function profession()
+    {
+        return $this->belongsTo(Profession::class);
+    }
+
     // Relationship with ItemPricing
     public function itemPricings()
     {
