@@ -1,45 +1,4 @@
-# Laravel
-/vendor/
-node_modules/
-.env
-.env.*
-.phpunit.result.cache
-Homestead.json
-Homestead.yaml
-npm-debug.log
-yarn-error.log
-/.idea
-/.vscode
-/public/storage
-/storage/*.key
-/storage/app/public
-/storage/framework/cache/*
-/storage/framework/sessions/*
-/storage/framework/testing/*
-/storage/framework/views/*
-/storage/logs/*
-/bootstrap/cache/*.php
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Ignore uploaded files & demo zips (custom)
-public/assets/demo_data/public.zip
-public/assets/demo_data/
-
-# Laravel Mix & Vite
-/public/hot
-/public/mix-manifest.json
-/public/build/
-/build/
-vite.config.js
-vite.config.ts
-
-/public/assets/demo_data/public.zip
-/.scribe/
-public/docs/
-vendor/
+# See https://github.com/johnwyles/laravel-gitignore/blob/main/gitignores/php-laravel.gitignore
 
 /node_modules
 /public/hot
@@ -57,7 +16,7 @@ bower_components/
 .cache/
 .webpack/
 .nyc_output/
-coverage/
+.coverage/
 build/
 dist/
 *.log
@@ -75,11 +34,45 @@ nova/
 nova-components/
 .php_cs.dist
 .php_cs
+
+# Additional ignores
 package-lock.json
 yarn.lock
-npm-shrinkwrap.json
-/docs
-/public/docs
-/config_scripts
-/DOC
-*(.*).sql
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.tgz
+*.tar.gz
+*.tar.bz2
+
+# Compressed files
+*.rar
+*.zip
+*.tar
+
+# Large files that should not be tracked
+*.sql
+*.dump
+*.dmp
+*.log
+*.tmp
+*.temp
+
+# Ignore specific large files that were in the repo
+Code.rar
+contract.zip
+
+# Additional ignores for Laravel
+public/hot
+storage/*.key
+.env
+.env.local
+.env.*
+!.env.example
+.env.testing
